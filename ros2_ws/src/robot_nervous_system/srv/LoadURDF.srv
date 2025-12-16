@@ -1,0 +1,11 @@
+# LoadURDF.srv
+# Load a URDF model into the parameter server (from FR-003: load URDF humanoid model)
+
+# Request
+string robot_description  # URDF content for 24+ DOF humanoid model from clarifications
+string robot_name         # Name to assign to robot
+
+---
+# Response
+bool success              # Whether URDF was loaded successfully
+string message            # Description of result

@@ -1,0 +1,35 @@
+# Gazebo Dynamics Configuration
+# Based on the data model for simulation environment entities
+
+# Solver settings
+solver_type: ode
+# Iterations for constraint solving
+iterations: 100
+# Time step for physics simulation (seconds)
+step_size: 0.001
+# Error reduction parameter
+erp: 0.2
+# Constraint force mixing
+cfm: 0.0
+
+# Contact settings
+contact_surface_layer: 0.001
+contact_max_correcting_vel: 100.0
+
+# Real time update rate (Hz)
+real_time_update_rate: 1000
+
+# Max step size in seconds
+max_step_size: 0.001
+
+# Real time factor (1.0 = real time)
+real_time_factor: 1.0
+
+# Gravity vector (m/s^2)
+gravity:
+  x: 0.0
+  y: 0.0
+  z: -9.81
+
+# Physics engine name
+engine_name: "ode"

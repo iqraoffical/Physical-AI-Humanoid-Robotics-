@@ -1,0 +1,44 @@
+# Depth Camera Sensor Configuration
+# Based on the data model for sensor simulation entities
+
+sensor_type: "depth_camera"
+sensor_name: "depth_camera_sensor"
+parent_link: "head"
+
+# Pose relative to parent link
+pose:
+  position:
+    x: 0.15
+    y: 0.0
+    z: 0.05
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+
+# Noise model parameters
+noise_model:
+  noise_type: "gaussian"
+  mean: 0.0
+  std_dev: 0.02
+  bias: 0.0
+  drift: 0.0005
+
+# Simulation parameters
+simulation_parameters:
+  update_rate: 30.0    # Hz
+  latency: 0.033       # seconds (approx 30fps)
+  range_min: 0.1       # meters
+  range_max: 10.0      # meters
+  fov_horizontal: 1.047 # radians (~60 degrees)
+  fov_vertical: 0.7854  # radians (~45 degrees)
+
+# Depth camera specifics
+depth_camera_config:
+  image_width: 640
+  image_height: 480
+  format: "R8G8B8"
+  near_clip: 0.1
+  far_clip: 10.0
+  focal_length: 1.0

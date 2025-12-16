@@ -1,0 +1,283 @@
+# Digital Twin System Configuration
+# Implements configuration requirements from the specification
+# Based on the data model and functional requirements
+
+## Simulation Environment Configuration
+
+# Gazebo Simulation Settings
+gazebo:
+  # Physics engine configuration
+  physics:
+    engine: "dart"  # Options: "ode", "bullet", "dart"
+    step_size: 0.001  # Simulation time step (seconds)
+    real_time_factor: 1.0  # Target simulation speed
+    gravity:
+      x: 0.0
+      y: 0.0
+      z: -9.81
+  
+  # Rendering settings
+  rendering:
+    enable_gui: true
+    camera_follow: true
+    visual_effects: true
+
+# Robot Model Configuration
+robot:
+  model:
+    name: "humanoid_24dof"  # 24+ degree-of-freedom model from specifications
+    description_file: "urdf/humanoid_24dof.urdf.xacro"
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      z: 0.8  # Height to start above ground
+      roll: 0.0
+      pitch: 0.0
+      yaw: 0.0
+
+  # Joint limits and constraints from URDF model
+  joint_limits:
+    position_tolerance: 0.01  # Position tolerance in radians
+    velocity_limit: 3.14      # Max joint velocity (rad/s)
+    effort_limit: 100.0       # Max joint effort (Nm)
+
+  # 24+ DOF humanoid model specifications
+  degrees_of_freedom: 24
+  joint_configuration:
+    head_joints: 2            # Yaw, Pitch
+    torso_joints: 2           # Waist rotation, tilt
+    left_arm_joints: 6        # Shoulder (3), Elbow (1), Wrist (2)
+    right_arm_joints: 6       # Shoulder (3), Elbow (1), Wrist (2)
+    left_leg_joints: 6        # Hip (3), Knee (1), Ankle (2)
+    right_leg_joints: 6       # Hip (3), Knee (1), Ankle (2)
+
+## Sensor Configuration
+
+# LiDAR Sensor Settings
+lidar:
+  sensor_type: "gpu_lidar"  # Use GPU-accelerated ray tracing
+  topic_name: "/sensors/lidar/scan"
+  frame_id: "lidar_link"
+  update_rate: 10.0  # Hz
+  range:
+    min: 0.1  # meters
+    max: 10.0 # meters
+  resolution:
+    horizontal: 1.0  # degrees
+    vertical: 2.0    # degrees
+  fov:
+    horizontal: 360.0  # degrees
+    vertical: 30.0     # degrees
+  noise_model:
+    type: "gaussian"
+    mean: 0.0
+    stddev: 0.01
+  
+  # Advanced parameters for realistic simulation
+  lidar_params:
+    samples: 360           # Horizontal samples for 360 degree coverage
+    vertical_samples: 30   # Vertical samples
+    noise_amplitude: 0.01  # Amplitude of noise to add
+
+# Depth Camera Settings
+depth_camera:
+  sensor_type: "depth"
+  topic_name: "/sensors/depth_camera/image_raw"
+  frame_id: "depth_camera_optical_frame"
+  update_rate: 30.0  # Hz
+  resolution:
+    width: 640   # pixels
+    height: 480  # pixels
+  fov: 60.0      # Field of view in degrees
+  range:
+    min: 0.1     # meters
+    max: 10.0    # meters
+  noise_model:
+    type: "gaussian"
+    mean: 0.0
+    stddev: 0.02  # uncertainty in depth measurement
+
+# IMU Sensor Settings
+imu:
+  sensor_type: "imu"
+  topic_name: "/sensors/imu/data"
+  frame_id: "imu_link"
+  update_rate: 100.0  # Hz (high frequency for good control)
+  noise_density: 0.01  # Continuous noise density
+  random_walk: 0.001   # Bias random walk
+  noise_model:
+    type: "gaussian"
+    mean: 0.0
+    stddev_linear_acceleration: 0.017
+    stddev_angular_velocity: 0.001
+    stddev_orientation: 1.0e-6
+
+## Unity Visualization Configuration
+
+unity:
+  # Connection settings for Unity visualization
+  host_ip: "127.0.0.1"
+  host_port: 5005
+  sync_frequency: 60.0  # Hz - rate at which Unity updates
+  max_desync_threshold: 0.05  # seconds - max allowed time difference
+
+  # Visualization parameters
+  visualization:
+    render_robot: true
+    render_environment: true
+    show_sensors: true
+    sensor_visualization_quality: "medium"  # low, medium, high
+    visualization_smoothing: 0.1  # Factor for smoothing position updates
+
+## Synchronization Configuration
+
+synchronization:
+  # Settings for synchronizing Gazebo and Unity
+  sync_frequency: 60.0  # Hz
+  max_desync_threshold: 0.05  # seconds
+  interpolation_enabled: true  # Enable interpolation between sync points
+  interpolation_window: 0.05   # Window for interpolation in seconds
+
+  # Clock synchronization
+  clock_sync:
+    use_sim_time: true  # Use simulation time instead of system time
+    time_source: "gazebo"  # Source of truth for time
+    max_drift: 0.01       # Max allowed drift in seconds
+
+## Performance Configuration
+
+performance:
+  # Performance tuning parameters
+  real_time_factor: 1.0      # Target simulation speed
+  max_update_rate: 1000.0    # Maximum physics update rate
+  threading:
+    parallel_collision: true  # Enable parallel collision checking
+    multi_thread_collide: true  # Enable multithreaded collision
+
+  # Resource allocation
+  resource_limits:
+    max_threads: 4          # Maximum threads for physics
+    memory_budget: 4096     # Memory budget in MB
+    gpu_memory_budget: 1024 # GPU memory budget in MB
+
+## Quality of Service Configuration
+
+qos:
+  # QoS profiles for different message types
+  
+  # High-frequency sensor data (LiDAR, camera)
+  sensor_data:
+    reliability: "best_effort"
+    durability: "volatile"
+    history: "keep_last"
+    depth: 5
+  
+  # Robot state information (critical)
+  robot_state:
+    reliability: "reliable"
+    durability: "volatile"
+    history: "keep_last"
+    depth: 10
+    deadline: 0.05  # 50ms deadline for timely delivery
+  
+  # Control commands (critical)
+  control_commands:
+    reliability: "reliable"
+    durability: "volatile"
+    history: "keep_last"
+    depth: 1
+    deadline: 0.03  # 30ms deadline for responsive control
+
+## Security Configuration (from clarifications)
+
+security:
+  # Security settings for the digital twin system
+  enabled: true
+  authentication:
+    method: "certificate"  # Certificate-based authentication
+    certificate_path: "/secure/certs/twin_auth.cert"
+  encryption:
+    algorithm: "aes_256_gcm"  # AES 256 with Galois/Counter Mode
+    key_rotation_interval: 3600  # Rotate keys every hour (seconds)
+  access_control:
+    rbac_enabled: true  # Role-based access control
+    default_role: "observer"  # Default access role
+    authorized_roles: 
+      - "admin"      # Full access
+      - "operator"   # Control access
+      - "observer"   # Read-only access
+
+## Observability Configuration (from clarifications)
+
+observability:
+  # Settings for monitoring and logging
+  logging:
+    level: "info"        # log level: debug, info, warn, error
+    format: "structured" # structured or plain text
+    sinks:
+      - "console"        # Log to console
+      - "file"           # Log to file
+      - "remote"         # Send logs to remote system
+  
+  metrics:
+    enabled: true
+    endpoint: "/metrics"
+    collection_interval: 10.0  # seconds between metric collections
+    exporters:
+      - "prometheus"     # Export metrics to Prometheus
+  
+  tracing:
+    enabled: true
+    sampling_rate: 0.1   # Sample 10% of requests for tracing
+    exporter: "opentelemetry"  # OpenTelemetry-compatible tracing
+
+## Validation Configuration (from clarifications)
+
+validation:
+  # Settings for physics and sensor validation
+  physics_accuracy_target:
+    mean_absolute_error: 0.05  # 5% MAE compared to physical tests
+    joint_position_tolerance: 0.01  # 1cm tolerance for end-effector
+  
+  sensor_validation:
+    noise_characteristics: true  # Validate noise models match specifications
+    latency_characteristics: true  # Validate latency within bounds
+    range_characteristics: true   # Validate range limits
+
+## External Interface Configuration
+
+interfaces:
+  # Configuration for external system interfaces
+  
+  # ROS 2 interface
+  ros2_interface:
+    domain_id: 0  # ROS 2 domain ID
+    node_namespace: "/digital_twin"
+    enable_statistics: true  # Enable ROS 2 statistics collection
+  
+  # External API interface
+  api_interface:
+    enable_rest_api: false  # Enable REST API for external control
+    rest_api_port: 8080     # Port for REST API
+    enable_websocket: false # Enable WebSocket for real-time updates
+
+## Failure Handling Configuration (from clarifications)
+
+failure_handling:
+  # Configuration for handling failures and fallback mechanisms
+  external_dependency_failures:
+    enabled: true
+    fallback_behavior: "graceful_degradation"  # How to handle dependency failures
+    retry_attempts: 3        # Number of retry attempts
+    retry_delay: 1.0         # Delay between retries in seconds
+    circuit_breaker: true    # Enable circuit breaker pattern
+  
+  error_recovery:
+    joint_limit_errors:
+      threshold: 0.1         # Threshold for detecting joint limit errors
+      recovery_behavior: "slow_down"  # slow_down, stop, or return_to_safe_position
+    sensor_errors:
+      invalid_reading_threshold: 0.1  # Threshold for invalid sensor readings
+      error_recovery_timeout: 5.0     # Time to wait before considering recovery failed
+
+...

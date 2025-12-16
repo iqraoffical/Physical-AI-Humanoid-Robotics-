@@ -1,0 +1,160 @@
+# Robot Control Configuration for Digital Twin
+# Based on the data-model.md specifications and sensor requirements
+
+# Controller Manager Settings
+controller_manager:
+  ros__parameters:
+    use_sim_time: true
+    update_rate: 100  # Hz
+
+    # Joint State Broadcaster
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    # Joint Trajectory Controller for the humanoid
+    joint_trajectory_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    # Individual joint controllers (if needed)
+    position_controllers:
+      type: position_controllers/JointGroupPositionController
+
+    # Velocity controllers
+    velocity_controllers:
+      type: velocity_controllers/JointGroupVelocityController
+
+# Joint Trajectory Controller Configuration
+joint_trajectory_controller:
+  ros__parameters:
+    joints:
+      - head_yaw_joint
+      - head_pitch_joint
+      - left_shoulder_roll_joint
+      - left_shoulder_pitch_joint
+      - left_shoulder_yaw_joint
+      - left_elbow_joint
+      - left_wrist_yaw_joint
+      - left_wrist_pitch_joint
+      - right_shoulder_roll_joint
+      - right_shoulder_pitch_joint
+      - right_shoulder_yaw_joint
+      - right_elbow_joint
+      - right_wrist_yaw_joint
+      - right_wrist_pitch_joint
+      - left_hip_yaw_joint
+      - left_hip_roll_joint
+      - left_hip_pitch_joint
+      - left_knee_joint
+      - left_ankle_yaw_joint
+      - left_ankle_pitch_joint
+      - right_hip_yaw_joint
+      - right_hip_roll_joint
+      - right_hip_pitch_joint
+      - right_knee_joint
+      - right_ankle_yaw_joint
+      - right_ankle_pitch_joint
+
+    command_interfaces:
+      - position
+
+    state_interfaces:
+      - position
+      - velocity
+
+# Individual Joint Controllers
+individual_joint_controllers:
+  ros__parameters:
+    joints:
+      # Head joints
+      - head_yaw_joint
+      - head_pitch_joint
+      
+      # Left arm joints
+      - left_shoulder_roll_joint
+      - left_shoulder_pitch_joint
+      - left_shoulder_yaw_joint
+      - left_elbow_joint
+      - left_wrist_yaw_joint
+      - left_wrist_pitch_joint
+      
+      # Right arm joints
+      - right_shoulder_roll_joint
+      - right_shoulder_pitch_joint
+      - right_shoulder_yaw_joint
+      - right_elbow_joint
+      - right_wrist_yaw_joint
+      - right_wrist_pitch_joint
+      
+      # Left leg joints
+      - left_hip_yaw_joint
+      - left_hip_roll_joint
+      - left_hip_pitch_joint
+      - left_knee_joint
+      - left_ankle_yaw_joint
+      - left_ankle_pitch_joint
+      
+      # Right leg joints
+      - right_hip_yaw_joint
+      - right_hip_roll_joint
+      - right_hip_pitch_joint
+      - right_knee_joint
+      - right_ankle_yaw_joint
+      - right_ankle_pitch_joint
+
+# Sensor Configuration
+sensor_settings:
+  ros__parameters:
+    # IMU Configuration
+    imu_sensor:
+      topic_name: "/sensors/imu/data"
+      frame_id: "imu_link"
+      update_rate: 100.0
+      noise_density: 0.01
+      random_walk: 0.001
+      bias_initial_mean: 0.0
+      bias_initial_std: 0.01
+
+    # LiDAR Configuration
+    lidar_sensor:
+      topic_name: "/sensors/lidar/scan"
+      frame_id: "lidar_link"
+      update_rate: 10.0
+      range_min: 0.1
+      range_max: 10.0
+      samples: 360
+      noise_model:
+        type: "gaussian"
+        mean: 0.0
+        stddev: 0.01
+
+    # Depth Camera Configuration
+    depth_camera:
+      topic_name: "/sensors/depth_camera/image_raw"
+      frame_id: "camera_link"
+      update_rate: 30.0
+      resolution_width: 640
+      resolution_height: 480
+      fov_horizontal: 1.047  # 60 degrees in radians
+      fov_vertical: 0.785    # 45 degrees in radians
+      range_min: 0.1
+      range_max: 10.0
+      noise_model:
+        type: "gaussian"
+        mean: 0.0
+        stddev: 0.02
+
+# Security Context Configuration (from clarifications)
+security_context:
+  ros__parameters:
+    access_level: "authenticated_user"
+    encryption_required: true
+    key_refresh_interval: 3600  # seconds
+    certificate_validation: true
+
+# Observability Configuration (from clarifications)
+observability:
+  ros__parameters:
+    logging_level: "INFO"
+    metrics_enabled: true
+    tracing_enabled: true
+    sampling_rate: 0.1  # 10% of requests traced

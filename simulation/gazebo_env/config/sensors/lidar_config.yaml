@@ -1,0 +1,42 @@
+# LiDAR Sensor Configuration
+# Based on the data model for sensor simulation entities
+
+sensor_type: "lidar"
+sensor_name: "lidar_sensor"
+parent_link: "base_link"
+
+# Pose relative to parent link
+pose:
+  position:
+    x: 0.15
+    y: 0.0
+    z: 0.1
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+
+# Noise model parameters
+noise_model:
+  noise_type: "gaussian"
+  mean: 0.0
+  std_dev: 0.01
+  bias: 0.01
+  drift: 0.001
+
+# Simulation parameters
+simulation_parameters:
+  update_rate: 10.0  # Hz
+  latency: 0.01      # seconds
+  range_min: 0.1     # meters
+  range_max: 10.0    # meters
+  fov_horizontal: 6.28318  # 2*pi radians = 360 degrees
+  fov_vertical: 0.7854     # pi/4 radians = 45 degrees
+
+# LiDAR specifics
+lidar_config:
+  samples: 360
+  resolution: 1
+  min_angle: -3.14159  # -pi
+  max_angle: 3.14159   # pi

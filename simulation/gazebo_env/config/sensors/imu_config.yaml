@@ -1,0 +1,42 @@
+# IMU Sensor Configuration
+# Based on the data model for sensor simulation entities
+
+sensor_type: "imu"
+sensor_name: "imu_sensor"
+parent_link: "base_link"
+
+# Pose relative to parent link
+pose:
+  position:
+    x: 0.0
+    y: 0.0
+    z: 0.1
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+
+# Noise model parameters
+noise_model:
+  noise_type: "gaussian"
+  mean: 0.0
+  std_dev: 0.01
+  bias: 0.001
+  drift: 0.0001
+
+# Simulation parameters
+simulation_parameters:
+  update_rate: 100.0   # Hz
+  latency: 0.01        # seconds
+  range_min: -100.0    # m/s^2 (acceleration)
+  range_max: 100.0     # m/s^2 (acceleration)
+  fov_horizontal: 0.0  # Not applicable for IMU
+  fov_vertical: 0.0    # Not applicable for IMU
+
+# IMU specifics
+imu_config:
+  linear_acceleration_stdev: 0.017  # m/s^2
+  angular_velocity_stdev: 0.001     # rad/s
+  orientation_stdev: 1.0e-6         # rad (very precise)
+  gravitational_constant: 9.81      # m/s^2

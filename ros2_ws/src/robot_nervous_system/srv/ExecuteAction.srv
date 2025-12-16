@@ -1,0 +1,12 @@
+# ExecuteAction.srv
+# Execute a predefined robot action (from FR-002: create actions)
+
+# Request
+string action_name        # Name of action to execute
+string[] param_names      # Parameter names
+string[] param_values     # Parameter values
+
+---
+# Response
+bool success              # Whether action was accepted
+string action_id          # Identifier for tracking action

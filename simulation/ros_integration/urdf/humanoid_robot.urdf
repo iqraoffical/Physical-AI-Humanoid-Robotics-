@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="humanoid_robot">
+
+  <!-- Include Gazebo-specific configurations -->
+  <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      <parameters>$(find ros2_control)/config/ros2_control_config.yaml</parameters>
+    </plugin>
+  </gazebo>
+
+  <!-- Include the main humanoid model -->
+  <xacro:include filename="$(find digital_twin)/urdf/humanoid_main.urdf.xacro" />
+
+  <!-- Instantiate the humanoid model -->
+  <xacro:humanoid_robot 
+    name="humanoid" 
+    parent="world"
+    x="0.0" 
+    y="0.0" 
+    z="0.8">
+  </xacro:humanoid_robot>
+
+</robot>
