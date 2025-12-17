@@ -28,9 +28,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        working-directory: Heckathon_Book/twin-book-site
 
       - name: Build website
         run: npm run build
+        working-directory: Heckathon_Book/twin-book-site
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v4
