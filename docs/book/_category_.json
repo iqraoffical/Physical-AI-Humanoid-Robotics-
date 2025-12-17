@@ -1,0 +1,10 @@
+{
+  "label": "Physical AI & Humanoid Robotics",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "title": "Physical AI & Humanoid Robotics",
+    "description": "A comprehensive textbook on Physical AI & Humanoid Robotics",
+    "slug": "/book"
+  }
+}

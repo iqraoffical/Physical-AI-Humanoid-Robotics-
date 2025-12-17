@@ -1,163 +1,143 @@
 <!-- SYNC IMPACT REPORT:
-Version Change: N/A -> 1.0.0
-Modified Principles: N/A (New creation)
-Added Sections: All sections added for new constitution
-Removed Sections: N/A
-Templates Requiring Updates: 
-  - .specify/templates/plan-template.md: ✅ to be reviewed
-  - .specify/templates/spec-template.md: ✅ to be reviewed
-  - .specify/templates/tasks-template.md: ✅ to be reviewed
-  - .specify/templates/commands/*.md: ✅ to be reviewed
+Version Change: 1.0.0 -> 1.1.0
+Modified Principles: Previous principles replaced with new RAG chatbot principles
+Added Sections: New project specifics for RAG chatbot
+Removed Sections: Previous Physical AI & Humanoid Robotics content
+Templates Requiring Updates:
+  - .specify/templates/plan-template.md: ⚠ pending review
+  - .specify/templates/spec-template.md: ⚠ pending review
+  - .specify/templates/tasks-template.md: ⚠ pending review
+  - .specify/templates/commands/*.md: ⚠ pending review
   - README.md: ⚠ pending review
-Follow-up TODOs: None
+Follow-up TODOs: Update dependent artifacts to align with new principles
 -->
 
-# Project Constitution: Physical AI & Humanoid Robotics — Unified Academic Book
+# Project Constitution: Integrated RAG Chatbot for AI Textbook Website
 
 ## Overview
 
-This constitution governs the creation of a unified, graduate-level academic textbook titled:
+This constitution governs the development of an integrated retrieval-augmented generation (RAG) chatbot embedded in a published technical book that answers user questions strictly using the book's content.
 
-"Physical AI & Humanoid Robotics: Embodied Intelligence in the Physical World"
-
-The book focuses on AI systems operating in physical environments, covering
-ROS 2, Gazebo, Unity, NVIDIA Isaac, Vision-Language-Action (VLA), humanoid
-robotics, and sim-to-real deployment.
-
-The book will be written using Claude Code and Spec-Kit Plus, structured as
-a modular curriculum, and deployed as a static documentation website using
-Docusaurus and GitHub Pages.
+The chatbot will be built using Spec-Kit Plus methodology and deployed as part of a static documentation website using Docusaurus and GitHub Pages.
 
 ## Primary Objectives
 
-1. Produce a complete, structured textbook using an AI/spec-driven workflow
-2. Ensure academic rigor suitable for senior undergraduate and graduate students
-3. Maintain technical accuracy and reproducibility
-4. Publish the book via Docusaurus with long-term maintainability
+1. Build a retrieval-augmented chatbot that answers user questions using only book content
+2. Ensure 100% source-grounded accuracy with zero hallucination tolerance
+3. Provide educational clarity for AI, robotics, and software engineering readers
+4. Maintain deterministic, reproducible answers from the book's content
+5. Deploy a production-ready system for academic and public use
 
 ## Target Audience
 
-- Senior undergraduate students (CS, AI, Robotics)
-- Graduate students and researchers
-- Robotics and AI engineers
-- Readers with a computer science background
+- Students learning AI, robotics, and software engineering
+- Researchers seeking specific information from the textbook
+- Technical professionals using the book as reference material
+- Anyone interested in accurate, book-grounded responses to their questions
 
 ## Core Principles
 
-### I. Accuracy through Primary Source Verification
-All factual, technical, and architectural claims must be verifiable against
-primary sources, including:
-- Peer-reviewed papers
-- Official documentation (ROS 2, NVIDIA Isaac, Gazebo, OpenAI/Whisper)
-- Authoritative standards
+### I. Source-grounded Accuracy (No External Knowledge)
+All chatbot responses must be derived exclusively from the book's content. Responses must never incorporate external knowledge or general pre-trained model capabilities that weren't learned from the book itself.
 
-No speculative or unsupported claims are allowed.
+### II. Zero Hallucination Tolerance
+The chatbot must never fabricate, imagine, or extrapolate information beyond what is explicitly contained in the book content. If the answer is not present in the book, the system must state this clearly rather than providing potentially inaccurate information.
 
-### II. Clarity for an Academic Book Audience
-The writing must be clear, structured, and pedagogical:
-- Explain intuition before implementation
-- Define all acronyms at first use
-- Maintain consistent terminology across chapters
-- Assume CS background, but not prior robotics expertise
+### III. Educational Clarity for Target Audience
+All responses must be clear, educational, and appropriate for AI, robotics, and software engineering readers. Responses should use simple technical language that balances precision with understanding.
 
-### III. Reproducibility and Practical Realism
-All system architectures, pipelines, and workflows must be described with
-sufficient detail to allow:
-- Reproduction in simulation
-- Understanding of sim-to-real constraints
-- Awareness of hardware and performance limitations
+### IV. Deterministic and Reproducible Answers
+Chatbot responses must be consistent for identical queries and retrievals. The system should provide reproducible results that can be traced back to specific book sections.
 
-### IV. Engineering and Scientific Rigor
-The book must:
-- Prefer peer-reviewed sources where applicable
-- Clearly distinguish research results from engineering practice
-- Explicitly state assumptions, limitations, and trade-offs
-
-### V. Traceability of Claims
-Every non-trivial factual or technical claim must be traceable to a citation.
-Uncited assertions are not permitted.
-
-### VI. Zero-Tolerance Plagiarism Policy
-All text must be original.
-- No copying or paraphrasing without citation
-- Direct quotations must be minimal and clearly marked
-- Final content must pass plagiarism detection with 0% unoriginal content
-  (excluding properly cited quotes)
+### V. Model-agnostic, API-independent Design
+The system architecture should be designed to support alternative models and APIs if needed, though the implementation must follow the specified model policy for the current iteration.
 
 ## Key Standards
 
-### Citation Format:
-- APA style (7th edition)
+### Model Policy:
+- Generation: Cohere LLMs only
+- Embeddings: Cohere embeddings only
+- Reasoning validation: Qwen CLI
+- OpenAI APIs are strictly prohibited
 
-### Source Requirements:
-- Minimum 50% peer-reviewed sources
-- Remaining sources may include:
-  - Official documentation
-  - Technical whitepapers
-  - Standards and SDK references
+### Data Management:
+- Primary data source: Vectorized book content stored in Qdrant Cloud
+- Metadata-backed chunks with chapter, section, page, and URL information
+- All retrievals must reference proper book sections
 
-### Writing Quality:
-- Flesch–Kincaid grade level: 10–12
-- Academic but readable textbook tone
+### Answer Structure:
+- Direct answer first
+- Explanation in simple technical language
+- Bullet points where helpful
+- Citations of section/chapter names when applicable
+- Format: (Chapter X – Section Y)
 
 ## Content Constraints
 
-### Structure:
-- Modular organization aligned with:
-  - Physical AI foundations
-  - ROS 2 (Robotic Nervous System)
-  - Simulation (Gazebo & Unity)
-  - NVIDIA Isaac platform
-  - Vision-Language-Action systems
-  - Humanoid robotics and capstone project
+### Retrieval Rules:
+- All answers MUST be derived from retrieved book chunks
+- If no relevant chunks are retrieved, respond with: "This information is not available in the book."
+- Never infer, assume, or extrapolate beyond provided content
 
-### Chapter Requirements:
-Each chapter must include:
-- Learning Objectives
-- Conceptual Foundations
-- System Architecture
-- Practical / Engineering Considerations
-- Summary
+### Selected Text Constraint:
+- If user provides selected text:
+  - Retrieval scope is LIMITED to the selected text only
+  - Ignore all other book content
+  - Answer must reference only that text
+  - If answer is not present, explicitly state it
 
-### Format:
-- Markdown source files (Docusaurus compatible)
-- Final deployed website via GitHub Pages
-- Optional PDF export from Markdown
+### Prohibited Behaviors:
+- Using pretrained general knowledge
+- Guessing missing information
+- Answering outside book scope
+- Fabricating citations or explanations
+- Using OpenAI APIs or any other unauthorized services
 
 ## Tooling & Workflow Governance
 
-### Claude Code:
-- Used for structured content generation
-- Must strictly follow this constitution
-- Must flag any violations before proceeding
+### Qwen CLI:
+- Used for quality checks and validation
+- Validates answer against retrieved context
+- Rejects responses with unsupported claims
+- Enforces concise, non-redundant output
 
 ### Spec-Kit Plus:
-- Governs specification-driven writing
-- Ensures consistency across chapters
+- Governs specification-driven development
+- Ensures consistency across components
 - Enforces compliance with this constitution
 
-All specifications, plans, tasks, and generated content must conform to this
-constitution. Any violation must be corrected before moving forward.
+### Development Workflow:
+- Follow TDD principles where applicable
+- Ensure all changes are tested against quality criteria
+- Maintain traceability from requirements to implementation
+
+All specifications, plans, tasks, and generated code must conform to this
+constitution. Any violation must be corrected before continuing development.
 
 ## Success Criteria
 
-- Book is fully deployable via Docusaurus and GitHub Pages
-- All claims are verifiable and properly cited
-- Zero plagiarism detected
-- Consistent academic tone across all modules
-- Content is suitable for peer review and classroom adoption
+- 100% answers traceable to book content
+- Zero hallucinations in evaluation
+- User-selected text queries handled correctly
+- Production-ready for academic and public deployment
+- Response latency optimized for free-tier infrastructure
+- Stateless generation with session tracking via database only
 
 ## Governance
 
 This constitution is the authoritative, non-negotiable standard governing the
-entire book project. Any amendments must be explicitly documented and approved
+entire RAG chatbot project. Any amendments must be explicitly documented and approved
 before use. All AI agents must reference this constitution during every phase
-of specification, planning, writing, and review.
+of specification, planning, implementation, and review.
 
 ### Versioning
-- Version: 1.0.0
+- Version: 1.1.0
 - Ratification Date: 2025-12-15
+- Last Amended Date: 2025-12-17
 - Status: Active
 - Amendment Procedure: Changes require explicit documentation and approval before implementation
 - Versioning Policy: Follow semantic versioning for all constitution updates
+  - MAJOR: Backward incompatible governance/principle removals or redefinitions
+  - MINOR: New principle/section added or materially expanded guidance
+  - PATCH: Clarifications, wording, typo fixes, non-semantic refinements
 - Compliance Review: All project artifacts must be validated against this constitution regularly

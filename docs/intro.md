@@ -2,46 +2,34 @@
 sidebar_position: 1
 ---
 
-# Tutorial Intro
+# Physical AI & Humanoid Robotics: Table of Contents
 
-Let's discover **Docusaurus in less than 5 minutes**.
+Welcome to **Physical AI & Humanoid Robotics: Embodied Intelligence in the Physical World**, a comprehensive textbook covering the intersection of artificial intelligence and physical systems, with a focus on humanoid robotics.
+
+## Book Structure
+
+This textbook is organized into interconnected modules that build upon each other to provide a comprehensive understanding of physical AI systems:
+
+### [Module 1: The Robotic Nervous System (ROS 2)](/docs/book/module-1-ros2/nervous-system)
+
+Establishes ROS 2 as the foundational communication infrastructure that enables reliable, modular, and fault-tolerant operation of humanoid robots. This module covers node architecture, communication patterns, and integration with AI systems.
+
+### [Module 2: Digital Twin Implementation](/docs/book/module-2-digital-twin/digital-twin)
+
+Explores the creation and implementation of digital twin systems using Gazebo and Unity for simulation and validation of robot designs before physical deployment, including sensor simulation and physics accuracy.
+
+## About This Book
+
+This textbook combines theoretical foundations with practical implementation guidance, providing readers with both conceptual understanding and hands-on experience in developing intelligent physical systems. Each module includes implementation details, educational objectives, integration points, and quality assurance guidelines.
+
+## Target Audience
+
+This book is designed for:
+- Graduate students studying AI and robotics
+- Researchers working on embodied AI systems
+- Engineers developing humanoid robots
+- Anyone interested in the intersection of AI and physical systems
 
 ## Getting Started
 
-Get started by **creating a new site**.
-
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
-
-### What you'll need
-
-- [Node.js](https://nodejs.org/en/download/) version 20.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
-
-## Generate a new site
-
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
-```
-
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
-
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+Start with Module 1 to understand the foundational concepts, then proceed through the modules in sequence to build a complete understanding of physical AI systems for humanoid robotics.
