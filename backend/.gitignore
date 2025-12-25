@@ -1,0 +1,99 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.gitgnore
+db.sqlite3
+db.sqlite3-journal
+.pytest_cache/
+.hypothesis/
+
+# Virtual Environment
+env/
+venv/
+.venv/
+ENV/
+.ENV
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.dev
+.env.test
+.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+
+# Docs
+docs/_build/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Coverage
+.coverage*
+htmlcov/
+
+# FastAPI / Uvicorn
+logs/
+*.log
+uvicorn_error.log
+access.log
+error.log
+
+# Local development
+.local/
+
+# Qwen CLI
+.qwen/
+
+# Cohere
+.cohere/

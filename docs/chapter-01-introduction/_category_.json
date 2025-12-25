@@ -1,0 +1,10 @@
+{
+  "label": "Chapter 01: Introduction",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "title": "Introduction to Physical AI & Humanoid Robotics",
+    "description": "Getting started with Physical AI and humanoid robotics concepts",
+    "slug": "/docs/chapter-01-introduction"
+  }
+}

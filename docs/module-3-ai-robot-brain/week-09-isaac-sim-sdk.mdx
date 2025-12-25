@@ -1,0 +1,563 @@
+---
+id: week-09-isaac-sim-sdk
+title: Week 9 – NVIDIA Isaac Sim and Isaac ROS Platform
+---
+
+# Week 9: NVIDIA Isaac Sim and Isaac ROS Platform
+
+## Learning Objectives
+
+By the end of this week, students will be able to:
+- Set up and configure NVIDIA Isaac Sim for photorealistic robot simulation
+- Understand the Isaac ROS framework for hardware-accelerated perception
+- Generate synthetic data using Isaac Sim for AI model training
+- Implement perception pipelines using Isaac ROS packages
+- Integrate Isaac Sim with ROS 2 for comprehensive robot development
+
+## Introduction to NVIDIA Isaac Platform
+
+The NVIDIA Isaac platform is a comprehensive solution for developing, simulating, and deploying AI-powered robots. It combines Isaac Sim for high-fidelity simulation with Isaac ROS for accelerated perception and navigation. This platform is particularly well-suited for humanoid robotics due to its advanced rendering capabilities and AI integration.
+
+### Key Components of Isaac Platform
+
+1. **Isaac Sim**: High-fidelity simulation environment built on NVIDIA Omniverse
+2. **Isaac ROS**: Hardware-accelerated perception and navigation packages
+3. **Isaac Lab**: Framework for robot learning and control
+4. **Isaac Apps**: Reference applications and demonstrations
+
+## Isaac Sim: Photorealistic Simulation
+
+Isaac Sim provides photorealistic simulation using NVIDIA's rendering technology, making it ideal for training perception models that need to transfer to the real world.
+
+### Installing Isaac Sim
+
+Isaac Sim requires specific hardware and software requirements:
+- NVIDIA GPU with RTX capabilities (for ray tracing)
+- Compatible NVIDIA driver
+- CUDA toolkit
+- Isaac Sim package from NVIDIA Developer Zone
+
+### Basic Isaac Sim Setup
+
+```python
+# Example Python script to initialize Isaac Sim
+import omni
+from omni.isaac.kit import SimulationApp
+
+# Configure simulation settings
+config = {
+    "headless": False,  # Set to True for headless operation
+    "render": "RayTracedLighting",  # High-quality rendering
+    "subdivisions": 8,  # Level of detail for meshes
+    "carb": "/path/to/carb"
+}
+
+# Start simulation application
+simulation_app = SimulationApp(config)
+
+# Import Isaac Sim modules
+from omni.isaac.core import World
+from omni.isaac.core.utils.nucleus import get_assets_root_path
+from omni.isaac.core.utils.stage import add_reference_to_stage
+
+# Create world instance
+world = World(stage_units_in_meters=1.0)
+
+# Load a robot asset
+assets_root_path = get_assets_root_path()
+if assets_root_path is None:
+    print("Could not find Isaac Sim assets. Ensure Isaac Sim is properly installed.")
+else:
+    # Add robot to stage
+    add_reference_to_stage(
+        usd_path=f"{assets_root_path}/Isaac/Robots/Franka/franka.usd",
+        prim_path="/World/Robot"
+    )
+
+# Reset and step the world
+world.reset()
+for i in range(100):
+    world.step(render=True)
+
+# Shutdown
+simulation_app.close()
+```
+
+### Creating Humanoid Robot Assets
+
+Isaac Sim uses USD (Universal Scene Description) format for robot models. For humanoid robots, you'll need to create articulated models with proper joint definitions:
+
+```python
+from omni.isaac.core.utils.prims import get_prim_at_path
+from omni.isaac.core.utils.stage import add_reference_to_stage
+from omni.isaac.core.robots import Robot
+from omni.isaac.core.articulations import ArticulationView
+
+# Load humanoid robot
+add_reference_to_stage(
+    usd_path="/path/to/humanoid_robot.usd",
+    prim_path="/World/Humanoid"
+)
+
+# Access the robot as an articulation
+humanoid = world.scene.add(
+    ArticulationView(
+        prim_path="/World/Humanoid",
+        name="humanoid_view"
+    )
+)
+```
+
+### Physics Simulation in Isaac Sim
+
+Isaac Sim uses PhysX for physics simulation, which provides accurate rigid body dynamics essential for humanoid robots:
+
+```python
+# Configure physics settings
+from omni.physx import get_physx_interface
+from omni.isaac.core.utils.physics import set_physics_dt
+
+# Set physics timestep
+set_physics_dt(1.0/60.0, substeps=1)
+
+# Configure ground plane
+from omni.isaac.core.utils.prims import create_prim
+create_prim(
+    prim_path="/World/GroundPlane",
+    prim_type="Plane",
+    position=[0, 0, 0],
+    orientation=[0.707, 0, 0, 0.707]  # Rotate 90 degrees about X
+)
+```
+
+## Synthetic Data Generation
+
+One of the key advantages of Isaac Sim is its ability to generate synthetic training data for AI models:
+
+### Domain Randomization
+
+Domain randomization helps models trained in simulation generalize to the real world:
+
+```python
+import numpy as np
+from omni.isaac.core.utils.prims import get_prim_property, set_prim_property
+
+def randomize_lighting():
+    """Randomize lighting conditions for synthetic data generation"""
+    # Get light prim
+    light_prim = get_prim_at_path("/World/Light")
+    
+    # Randomize light intensity and color
+    intensity = np.random.uniform(500, 1500)
+    color = [np.random.uniform(0.8, 1.2), np.random.uniform(0.8, 1.2), np.random.uniform(0.8, 1.2)]
+    
+    set_prim_property(light_prim, "inputs:intensity", intensity)
+    set_prim_property(light_prim, "inputs:color", color)
+
+def randomize_textures():
+    """Randomize surface textures for synthetic data generation"""
+    # This would involve changing material properties
+    # of objects in the scene to increase diversity
+    pass
+
+# Apply randomizations during simulation
+for i in range(1000):  # Generate 1000 different scenarios
+    randomize_lighting()
+    randomize_textures()
+    
+    # Capture sensor data
+    world.step(render=True)
+    
+    # Save synthetic data
+    # ... save RGB, depth, segmentation data
+```
+
+### Sensor Simulation in Isaac Sim
+
+Isaac Sim provides high-fidelity sensor simulation:
+
+```python
+from omni.isaac.sensor import Camera, LidarRtx
+import carb
+
+# Create RGB camera
+camera = Camera(
+    prim_path="/World/Humanoid/Camera",
+    frequency=30,
+    resolution=(640, 480)
+)
+
+# Create physically-based LiDAR
+lidar = LidarRtx(
+    prim_path="/World/Humanoid/Lidar",
+    translation=np.array([0.2, 0, 0.5]),  # Position relative to robot
+    config="Example_Rotary_Lidar",
+    rotation_rate=10,  # 10 Hz rotation
+    update_frequency=100  # 100 Hz update rate
+)
+
+# Enable semantic segmentation
+from omni.isaac.synthetic_utils import visualize_segmentation
+camera.add_render_product("seg", "SemanticSegmentation")
+
+# Enable depth rendering
+camera.add_render_product("depth", "DistanceToImagePlane")
+```
+
+## Isaac ROS: Hardware-Accelerated Perception
+
+Isaac ROS packages provide hardware-accelerated implementations of common robotics algorithms using NVIDIA GPUs:
+
+### Installing Isaac ROS
+
+Isaac ROS packages are available as ROS 2 packages optimized for NVIDIA hardware:
+
+```bash
+# Add NVIDIA package repository
+sudo apt update
+sudo apt install -y software-properties-common
+sudo add-apt-repository universe
+sudo apt update
+sudo apt install -y nvidia-isaac-ros-gxf
+sudo apt install -nvidia-isaac-ros-common
+```
+
+### Isaac ROS Perception Pipeline
+
+Isaac ROS provides accelerated implementations of perception algorithms:
+
+```python
+# Example of Isaac ROS visual slam pipeline
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Image, CameraInfo
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry
+
+class IsaacVSLAMNode(Node):
+    def __init__(self):
+        super().__init__('isaac_vslam')
+        
+        # Subscribe to camera and IMU data
+        self.image_sub = self.create_subscription(
+            Image,
+            '/camera/rgb/image_rect_color',
+            self.image_callback,
+            10
+        )
+        
+        self.camera_info_sub = self.create_subscription(
+            CameraInfo,
+            '/camera/rgb/camera_info',
+            self.camera_info_callback,
+            10
+        )
+        
+        # Publish pose estimates
+        self.pose_pub = self.create_publisher(
+            PoseStamped,
+            '/visual_slam/pose',
+            10
+        )
+        
+        self.odom_pub = self.create_publisher(
+            Odometry,
+            '/visual_slam/odometry',
+            10
+        )
+        
+        # Initialize Isaac ROS VSLAM components
+        self.initialize_vslam()
+    
+    def initialize_vslam(self):
+        # Initialize Isaac ROS VSLAM pipeline
+        # This would typically involve setting up
+        # CUDA-accelerated feature detection and tracking
+        pass
+    
+    def image_callback(self, msg):
+        # Process image with Isaac ROS accelerated pipeline
+        # The actual processing would happen in the Isaac ROS nodes
+        pass
+    
+    def camera_info_callback(self, msg):
+        # Use camera calibration for VSLAM
+        pass
+```
+
+### Isaac ROS Packages for Humanoid Robotics
+
+1. **ISAAC ROS Apriltag**: GPU-accelerated AprilTag detection
+2. **ISAAC ROS ISAAC ROS Stereo DNN**: Real-time stereo depth estimation
+3. **ISAAC ROS ISAAC ROS Visual Slam**: GPU-accelerated visual SLAM
+4. **ISAAC ROS ISAAC ROS Point Cloud**: Accelerated point cloud processing
+5. **ISAAC ROS ISAAC ROS Image Pipeline**: Optimized image rectification and processing
+
+### Example Isaac ROS Launch File
+
+```xml
+<!-- launch/isaac_vslam_pipeline.launch.py -->
+from launch import LaunchDescription
+from launch_ros.actions import ComposableNodeContainer
+from launch_ros.descriptions import ComposableNode
+
+def generate_launch_description():
+    # Container for Isaac ROS nodes
+    container = ComposableNodeContainer(
+        name='isaac_ros_container',
+        namespace='isaac_ros',
+        package='rclcpp_components',
+        executable='component_container_mt',  # Multi-threaded container
+        composable_node_descriptions=[
+            # Image rectification
+            ComposableNode(
+                package='isaac_ros_image_proc',
+                plugin='nvidia::isaac_ros::image_proc::RectifyNode',
+                name='rectify_node',
+                parameters=[{
+                    'input_width': 1920,
+                    'input_height': 1080,
+                    'output_width': 1920,
+                    'output_height': 1080,
+                }],
+                remappings=[
+                    ('image_raw', '/camera/rgb/image_raw'),
+                    ('camera_info', '/camera/rgb/camera_info'),
+                    ('image_rect', '/camera/rgb/image_rect_color'),
+                ]
+            ),
+            
+            # Feature detection
+            ComposableNode(
+                package='isaac_ros_freespace_segmentation',
+                plugin='nvidia::isaac_ros::freespace_segmentation::FreeSpaceSegmentationNode',
+                name='freespace_segmentation_node',
+                remappings=[
+                    ('image', '/camera/rgb/image_rect_color'),
+                    ('camera_info', '/camera/rgb/camera_info'),
+                ]
+            ),
+            
+            # Visual SLAM
+            ComposableNode(
+                package='isaac_ros_visual_slam',
+                plugin='nvidia::isaac_ros::visual_slam::VisualSlamNode',
+                name='visual_slam_node',
+                parameters=[{
+                    'enable_rectified_pose': True,
+                    'map_frame': 'map',
+                    'odom_frame': 'odom',
+                    'base_frame': 'base_link',
+                    'publish_odom_tf': True,
+                }],
+                remappings=[
+                    ('visual_slam/imu', '/imu/data'),
+                    ('visual_slam/left/camera_info', '/camera/rgb/camera_info'),
+                    ('visual_slam/left/image', '/camera/rgb/image_rect_color'),
+                ]
+            ),
+        ],
+        output='screen',
+    )
+    
+    return LaunchDescription([container])
+```
+
+## Isaac Lab for Robot Learning
+
+Isaac Lab provides a framework for robot learning and control:
+
+```python
+# Example of using Isaac Lab for humanoid control
+import omni
+from omni.isaac.kit import SimulationApp
+simulation_app = SimulationApp({"headless": False})
+
+from omni.isaac.core import World
+from omni.isaac.core.utils.nucleus import get_assets_root_path
+from omni.isaac.core.utils.stage import add_reference_to_stage
+from omni.isaac.core.articulations import ArticulationView
+
+# Create world
+world = World(stage_units_in_meters=1.0)
+
+# Add humanoid robot
+assets_root_path = get_assets_root_path()
+if assets_root_path is not None:
+    add_reference_to_stage(
+        usd_path=f"{assets_root_path}/Isaac/Robots/NVIDIA/Isaac/Robots/carter_navigate.usd",
+        prim_path="/World/Robot"
+    )
+
+# Add a simple humanoid for this example
+# In practice, you'd load a proper humanoid model
+world.reset()
+
+# Access the robot
+robot = world.scene.get_object("Robot")
+
+# Define a simple control policy
+def simple_policy(observation):
+    """Simple control policy for demonstration"""
+    # This would be replaced with a learned policy
+    # or more sophisticated controller
+    action = [0.1, 0.0, 0.0, 0.0, 0.0, 0.0]  # Joint position commands
+    return action
+
+# Main control loop
+for i in range(1000):
+    # Get observation
+    world.step(render=True)
+    
+    # Apply control
+    action = simple_policy(None)  # Replace with actual observation
+    
+    # Apply action to robot
+    # robot.apply_action(action)  # Implementation depends on robot model
+
+simulation_app.close()
+```
+
+## Integration with ROS 2
+
+Isaac Sim and Isaac ROS integrate seamlessly with ROS 2:
+
+### ROS 2 Bridge for Isaac Sim
+
+```python
+# Example of ROS 2 bridge for Isaac Sim
+from omni.isaac.ros_bridge import ROSBridge
+import rclpy
+from sensor_msgs.msg import Image
+from geometry_msgs.msg import Twist
+
+class IsaacROSController:
+    def __init__(self):
+        # Initialize ROS 2
+        rclpy.init()
+        self.node = rclpy.create_node('isaac_ros_controller')
+        
+        # Create publisher for robot commands
+        self.cmd_pub = self.node.create_publisher(
+            Twist,
+            '/cmd_vel',
+            10
+        )
+        
+        # Create subscriber for sensor data
+        self.image_sub = self.node.create_subscription(
+            Image,
+            '/camera/rgb/image_raw',
+            self.image_callback,
+            10
+        )
+    
+    def image_callback(self, msg):
+        # Process image data from Isaac Sim
+        # This could trigger robot actions
+        pass
+    
+    def send_command(self, linear_x, angular_z):
+        cmd_msg = Twist()
+        cmd_msg.linear.x = linear_x
+        cmd_msg.angular.z = angular_z
+        self.cmd_pub.publish(cmd_msg)
+```
+
+### Using Isaac Sim with Navigation2
+
+Isaac Sim can be used with ROS 2 Navigation2 stack:
+
+```xml
+<!-- Example launch file combining Isaac Sim with Navigation2 -->
+from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
+
+def generate_launch_description():
+    # Launch Isaac Sim
+    isaac_sim_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare('my_isaac_package'),
+                'launch',
+                'isaac_sim.launch.py'
+            ])
+        ])
+    )
+    
+    # Launch Navigation2
+    navigation_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare('nav2_bringup'),
+                'launch',
+                'navigation_launch.py'
+            ])
+        ])
+    )
+    
+    # Launch SLAM (if needed)
+    slam_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare('slam_toolbox'),
+                'launch',
+                'online_async_launch.py'
+            ])
+        ])
+    )
+    
+    return LaunchDescription([
+        isaac_sim_launch,
+        navigation_launch,
+        slam_launch
+    ])
+```
+
+## Best Practices for Isaac Platform
+
+### Performance Optimization
+
+1. **GPU Utilization**: Ensure proper GPU drivers and CUDA setup
+2. **Rendering Settings**: Adjust rendering quality based on requirements
+3. **Simulation Steps**: Balance accuracy and performance
+4. **Memory Management**: Monitor GPU memory usage for large scenes
+
+### Simulation-to-Reality Transfer
+
+1. **Domain Randomization**: Apply domain randomization techniques
+2. **Sensor Noise**: Add realistic sensor noise models
+3. **Physics Parameters**: Calibrate physics properties to match reality
+4. **Validation**: Test on real robots to validate transfer
+
+## Troubleshooting Common Issues
+
+### Isaac Sim Installation Issues
+
+- Ensure compatible GPU and drivers
+- Verify CUDA installation
+- Check Isaac Sim asset paths
+- Confirm Python environment compatibility
+
+### Performance Issues
+
+- Reduce scene complexity if needed
+- Lower rendering quality settings
+- Optimize robot models for simulation
+- Adjust physics parameters appropriately
+
+## Key Challenges and Practical Insights
+
+Working with NVIDIA Isaac platform presents several challenges:
+
+1. **Hardware Requirements**: Requires NVIDIA GPU with specific capabilities
+2. **Complexity**: Multiple components require careful integration
+3. **Learning Curve**: New tools and workflows to master
+4. **Resource Intensive**: High computational requirements
+
+## Looking Ahead
+
+In Week 10, we'll explore AI-powered perception and manipulation techniques specifically for humanoid robots, building on the Isaac platform to create intelligent systems that can perceive and interact with their environment effectively.

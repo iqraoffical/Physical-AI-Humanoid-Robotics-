@@ -1,0 +1,867 @@
+---
+id: week-10-ai-perception-manipulation
+title: Week 10 – AI-Powered Perception and Manipulation for Humanoids
+---
+
+# Week 10: AI-Powered Perception and Manipulation for Humanoids
+
+## Learning Objectives
+
+By the end of this week, students will be able to:
+- Implement AI-based perception systems for humanoid robots
+- Design manipulation strategies using machine learning
+- Integrate computer vision models with robot control systems
+- Apply reinforcement learning techniques for robotic manipulation
+- Evaluate perception and manipulation performance in simulation and reality
+
+## Introduction to AI-Powered Perception
+
+AI-powered perception systems enable humanoid robots to understand and interact with their environment. These systems go beyond traditional computer vision approaches by using deep learning models to recognize objects, understand scenes, and make decisions based on visual input.
+
+### Perception Pipeline Architecture
+
+A typical AI perception pipeline for humanoid robots includes:
+
+1. **Sensor Data Acquisition**: Cameras, LiDAR, IMUs, and other sensors
+2. **Preprocessing**: Image enhancement, noise reduction, and normalization
+3. **Feature Extraction**: Using CNNs to extract relevant features
+4. **Object Detection and Recognition**: Identifying objects in the scene
+5. **Scene Understanding**: Understanding spatial relationships and context
+6. **Action Planning**: Using perception data to plan robot actions
+
+### Object Detection for Humanoid Robots
+
+Object detection is crucial for humanoid robots to interact with their environment:
+
+```python
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Image
+from std_msgs.msg import String
+from cv_bridge import CvBridge
+import torch
+import torchvision.transforms as T
+from torchvision.models.detection import fasterrcnn_resnet50_fpn
+
+class ObjectDetectionNode(Node):
+    def __init__(self):
+        super().__init__('object_detection_node')
+        
+        # Initialize model
+        self.model = fasterrcnn_resnet50_fpn(pretrained=True)
+        self.model.eval()
+        
+        # Initialize CV bridge
+        self.bridge = CvBridge()
+        
+        # Publishers and subscribers
+        self.image_sub = self.create_subscription(
+            Image,
+            '/camera/rgb/image_raw',
+            self.image_callback,
+            10
+        )
+        
+        self.detection_pub = self.create_publisher(
+            String,
+            '/object_detections',
+            10
+        )
+        
+        # COCO dataset class names
+        self.coco_names = [
+            '__background__', 'person', 'bicycle', 'car', 'motorcycle', 
+            'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
+            'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird',
+            'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear',
+            'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie',
+            'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
+            'kite', 'baseball bat', 'baseball glove', 'skateboard',
+            'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
+            'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
+            'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza',
+            'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed',
+            'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote',
+            'keyboard', 'cell phone', 'microwave', 'oven', 'toaster',
+            'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors',
+            'teddy bear', 'hair drier', 'toothbrush'
+        ]
+    
+    def image_callback(self, msg):
+        # Convert ROS image to OpenCV
+        cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        
+        # Preprocess image
+        transform = T.Compose([
+            T.ToPILImage(),
+            T.ToTensor(),
+        ])
+        
+        input_tensor = transform(cv_image)
+        input_batch = input_tensor.unsqueeze(0)  # Add batch dimension
+        
+        # Run inference
+        with torch.no_grad():
+            outputs = self.model(input_batch)
+        
+        # Process detections
+        detections = []
+        for i, (score, label, box) in enumerate(zip(
+            outputs[0]['scores'], 
+            outputs[0]['labels'], 
+            outputs[0]['boxes']
+        )):
+            if score > 0.5:  # Confidence threshold
+                class_name = self.coco_names[label]
+                bbox = box.tolist()
+                detections.append({
+                    'class': class_name,
+                    'confidence': float(score),
+                    'bbox': bbox
+                })
+        
+        # Publish detections
+        if detections:
+            detection_msg = String()
+            detection_msg.data = str(detections)
+            self.detection_pub.publish(detection_msg)
+            
+            # Log detections
+            for det in detections:
+                self.get_logger().info(
+                    f"Detected {det['class']} with confidence {det['confidence']:.2f}"
+                )
+```
+
+## Semantic Segmentation for Scene Understanding
+
+Semantic segmentation provides pixel-level understanding of the environment:
+
+```python
+import torch
+import torchvision.transforms as T
+from torchvision.models.segmentation import deeplabv3_resnet50
+
+class SemanticSegmentationNode(Node):
+    def __init__(self):
+        super().__init__('semantic_segmentation_node')
+        
+        # Load pre-trained segmentation model
+        self.model = deeplabv3_resnet50(pretrained=True)
+        self.model.eval()
+        
+        # Initialize CV bridge
+        self.bridge = CvBridge()
+        
+        # Publishers and subscribers
+        self.image_sub = self.create_subscription(
+            Image,
+            '/camera/rgb/image_raw',
+            self.image_callback,
+            10
+        )
+        
+        # For humanoid navigation, knowing traversable areas is crucial
+        self.traversable_pub = self.create_publisher(
+            Image,
+            '/traversable_areas',
+            10
+        )
+    
+    def image_callback(self, msg):
+        cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        
+        # Preprocess
+        input_tensor = T.ToTensor()(cv_image).unsqueeze(0)
+        
+        # Run segmentation
+        with torch.no_grad():
+            output = self.model(input_tensor)['out'][0]
+            predicted_mask = output.argmax(0).cpu().numpy()
+        
+        # Convert to traversable map (simplified)
+        # In practice, this would be more sophisticated
+        traversable_map = self.create_traversable_map(predicted_mask)
+        
+        # Publish traversable areas
+        traversable_msg = self.bridge.cv2_to_imgmsg(traversable_map, "mono8")
+        self.traversable_pub.publish(traversable_msg)
+    
+    def create_traversable_map(self, segmentation_mask):
+        # Simplified logic: consider floor, carpet as traversable
+        # This would be expanded in a real implementation
+        traversable = ((segmentation_mask == 0) |   # background/floor
+                       (segmentation_mask == 5))     # pavement
+        return traversable.astype('uint8') * 255
+```
+
+## AI-Powered Manipulation
+
+Manipulation tasks require precise control and understanding of object properties:
+
+### Grasp Detection with Deep Learning
+
+```python
+import torch.nn as nn
+import torch.nn.functional as F
+
+class GraspDetectionModel(nn.Module):
+    def __init__(self, num_angle_bins=18):  # 18 bins = 20-degree increments
+        super(GraspDetectionModel, self).__init__()
+        
+        # Feature extraction backbone (simplified)
+        self.backbone = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(32, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.ReLU()
+        )
+        
+        # Grasp quality prediction head
+        self.quality_head = nn.Sequential(
+            nn.Conv2d(128, 64, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(64, 1, kernel_size=1)
+        )
+        
+        # Grasp angle prediction head
+        self.angle_head = nn.Sequential(
+            nn.Conv2d(128, 64, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(64, num_angle_bins, kernel_size=1)
+        )
+    
+    def forward(self, x):
+        features = self.backbone(x)
+        quality = torch.sigmoid(self.quality_head(features))
+        angles = self.angle_head(features)
+        return quality, angles
+
+class GraspDetectionNode(Node):
+    def __init__(self):
+        super().__init__('grasp_detection_node')
+        
+        # Load trained model
+        self.model = GraspDetectionModel()
+        # self.model.load_state_dict(torch.load('grasp_model.pth'))
+        self.model.eval()
+        
+        self.bridge = CvBridge()
+        
+        self.image_sub = self.create_subscription(
+            Image,
+            '/camera/rgb/image_raw',
+            self.image_callback,
+            10
+        )
+        
+        # Publisher for grasp candidates
+        self.grasp_pub = self.create_publisher(
+            String,  # In practice, use a custom message type
+            '/grasp_candidates',
+            10
+        )
+    
+    def image_callback(self, msg):
+        cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        
+        # Preprocess
+        input_tensor = T.ToTensor()(cv_image).unsqueeze(0)
+        
+        # Run inference
+        with torch.no_grad():
+            quality_map, angle_map = self.model(input_tensor)
+            
+            # Extract grasp candidates
+            grasp_candidates = self.extract_grasps(quality_map, angle_map)
+            
+            # Publish best grasp
+            if grasp_candidates:
+                best_grasp = max(grasp_candidates, key=lambda x: x['quality'])
+                grasp_msg = String()
+                grasp_msg.data = str(best_grasp)
+                self.grasp_pub.publish(grasp_msg)
+    
+    def extract_grasps(self, quality_map, angle_map):
+        # Simplified grasp extraction
+        # In practice, this would use more sophisticated methods
+        quality = quality_map.squeeze().cpu().numpy()
+        angles = angle_map.squeeze().cpu().numpy()
+        
+        # Find high-quality grasp points
+        high_quality = quality > 0.7
+        
+        grasps = []
+        for y in range(quality.shape[0]):
+            for x in range(quality.shape[1]):
+                if high_quality[y, x]:
+                    angle_idx = angles[:, y, x].argmax()
+                    angle = (angle_idx * 20) % 360  # Convert to degrees
+                    grasps.append({
+                        'x': x,
+                        'y': y,
+                        'quality': quality[y, x],
+                        'angle': angle
+                    })
+        
+        return grasps
+```
+
+## Reinforcement Learning for Manipulation
+
+Reinforcement learning can be used to learn complex manipulation skills:
+
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+
+class ManipulationPolicy(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        super(ManipulationPolicy, self).__init__()
+        
+        self.actor = nn.Sequential(
+            nn.Linear(state_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, action_dim),
+            nn.Tanh()  # Actions between -1 and 1
+        )
+        
+        self.critic = nn.Sequential(
+            nn.Linear(state_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, 1)
+        )
+    
+    def forward(self, state):
+        action = self.actor(state)
+        value = self.critic(state)
+        return action, value
+
+class RLManipulationNode(Node):
+    def __init__(self):
+        super().__init__('rl_manipulation_node')
+        
+        # Initialize policy
+        state_dim = 24  # Example: joint positions, velocities, object positions
+        action_dim = 7  # Example: 7-DOF arm
+        self.policy = ManipulationPolicy(state_dim, action_dim)
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=3e-4)
+        
+        # For humanoid manipulation tasks
+        self.current_episode = []
+        self.episode_reward = 0
+        
+        # Publishers and subscribers
+        self.state_sub = self.create_subscription(
+            String,  # In practice, use a custom message type
+            '/robot_state',
+            self.state_callback,
+            10
+        )
+        
+        self.action_pub = self.create_publisher(
+            String,  # In practice, use a custom message type
+            '/robot_action',
+            10
+        )
+    
+    def state_callback(self, msg):
+        # Parse state from message
+        state = self.parse_state(msg.data)
+        
+        # Get action from policy
+        action, value = self.policy(torch.tensor(state, dtype=torch.float32))
+        
+        # Add noise for exploration during training
+        if self.training:
+            noise = torch.randn_like(action) * 0.1
+            action = torch.clamp(action + noise, -1, 1)
+        
+        # Publish action
+        action_msg = String()
+        action_msg.data = str(action.detach().numpy().tolist())
+        self.action_pub.publish(action_msg)
+        
+        # Store transition for training
+        self.current_episode.append({
+            'state': state,
+            'action': action.detach().numpy(),
+            'value': value.item()
+        })
+    
+    def parse_state(self, state_str):
+        # Parse state from string representation
+        # In practice, use a proper message type
+        import json
+        state_dict = json.loads(state_str)
+        return np.array(state_dict['joint_positions'] + 
+                       state_dict['joint_velocities'] + 
+                       state_dict['object_positions'])
+    
+    def compute_returns(self, rewards, gamma=0.99):
+        """Compute discounted returns for policy gradient"""
+        returns = []
+        R = 0
+        for r in reversed(rewards):
+            R = r + gamma * R
+            returns.insert(0, R)
+        return returns
+```
+
+## Multi-Modal Perception
+
+Humanoid robots benefit from combining multiple sensory modalities:
+
+### Vision-Language Integration
+
+```python
+import clip
+import torch
+from PIL import Image as PILImage
+
+class VisionLanguageNode(Node):
+    def __init__(self):
+        super().__init__('vision_language_node')
+        
+        # Load CLIP model for vision-language tasks
+        self.clip_model, self.clip_preprocess = clip.load("ViT-B/32")
+        self.clip_model.eval()
+        
+        self.bridge = CvBridge()
+        
+        self.image_sub = self.create_subscription(
+            Image,
+            '/camera/rgb/image_raw',
+            self.image_callback,
+            10
+        )
+        
+        # Subscribe to natural language commands
+        self.command_sub = self.create_subscription(
+            String,
+            '/natural_language_command',
+            self.command_callback,
+            10
+        )
+        
+        # Publish identified targets
+        self.target_pub = self.create_publisher(
+            String,
+            '/target_object',
+            10
+        )
+        
+        self.current_command = None
+    
+    def command_callback(self, msg):
+        self.current_command = msg.data
+        self.get_logger().info(f"Received command: {self.current_command}")
+    
+    def image_callback(self, msg):
+        if not self.current_command:
+            return
+            
+        cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        
+        # Convert to PIL image for CLIP
+        pil_image = PILImage.fromarray(cv_image)
+        image_input = self.clip_preprocess(pil_image).unsqueeze(0)
+        
+        # Tokenize text command
+        text_input = clip.tokenize([self.current_command])
+        
+        # Get similarity
+        with torch.no_grad():
+            image_features = self.clip_model.encode_image(image_input)
+            text_features = self.clip_model.encode_text(text_input)
+            
+            # Normalize features
+            image_features /= image_features.norm(dim=-1, keepdim=True)
+            text_features /= text_features.norm(dim=-1, keepdim=True)
+            
+            # Compute similarity
+            similarity = (100.0 * image_features @ text_features.T).softmax(dim=-1)
+            similarity_score = similarity[0][0].item()
+        
+        # If similarity is high enough, this might be the target
+        if similarity_score > 0.2:  # Threshold may need tuning
+            target_msg = String()
+            target_msg.data = f"{{'object': '{self.current_command}', 'confidence': {similarity_score}}}"
+            self.target_pub.publish(target_msg)
+            self.get_logger().info(f"Target identified with confidence: {similarity_score:.2f}")
+```
+
+## Sensor Fusion for Robust Perception
+
+Combining multiple sensors improves perception reliability:
+
+```python
+class SensorFusionNode(Node):
+    def __init__(self):
+        super().__init__('sensor_fusion_node')
+        
+        # Subscriptions for different sensors
+        self.camera_sub = self.create_subscription(
+            Image,
+            '/camera/rgb/image_raw',
+            self.camera_callback,
+            10
+        )
+        
+        self.depth_sub = self.create_subscription(
+            Image,
+            '/camera/depth/image_raw',
+            self.depth_callback,
+            10
+        )
+        
+        self.lidar_sub = self.create_subscription(
+            LaserScan,
+            '/scan',
+            self.lidar_callback,
+            10
+        )
+        
+        self.imu_sub = self.create_subscription(
+            Imu,
+            '/imu/data',
+            self.imu_callback,
+            10
+        )
+        
+        # Publisher for fused perception
+        self.fused_perception_pub = self.create_publisher(
+            String,  # In practice, use custom message
+            '/fused_perception',
+            10
+        )
+        
+        # Store sensor data with timestamps
+        self.camera_data = None
+        self.depth_data = None
+        self.lidar_data = None
+        self.imu_data = None
+        
+        # Timer for fusion
+        self.fusion_timer = self.create_timer(0.1, self.fuse_sensors)
+    
+    def camera_callback(self, msg):
+        self.camera_data = (msg, self.get_clock().now())
+    
+    def depth_callback(self, msg):
+        self.depth_data = (msg, self.get_clock().now())
+    
+    def lidar_callback(self, msg):
+        self.lidar_data = (msg, self.get_clock().now())
+    
+    def imu_callback(self, msg):
+        self.imu_data = (msg, self.get_clock().now())
+    
+    def fuse_sensors(self):
+        # Check if we have reasonably synchronized data
+        if not all([self.camera_data, self.depth_data, 
+                   self.lidar_data, self.imu_data]):
+            return
+            
+        # Check timestamp synchronization (within 50ms)
+        timestamps = [data[1] for data in 
+                     [self.camera_data, self.depth_data, 
+                      self.lidar_data, self.imu_data]]
+        time_diff = max(timestamps) - min(timestamps)
+        
+        if time_diff.nanoseconds > 50_000_000:  # 50ms
+            self.get_logger().warn("Sensor data not synchronized")
+            return
+        
+        # Perform sensor fusion
+        fused_data = self.perform_fusion(
+            self.camera_data[0], 
+            self.depth_data[0], 
+            self.lidar_data[0], 
+            self.imu_data[0]
+        )
+        
+        # Publish fused result
+        fused_msg = String()
+        fused_msg.data = fused_data
+        self.fused_perception_pub.publish(fused_msg)
+    
+    def perform_fusion(self, camera_msg, depth_msg, lidar_msg, imu_msg):
+        # Convert sensor data to common format
+        # This is a simplified example
+        import json
+        
+        # Process each sensor modality
+        camera_info = self.process_camera(camera_msg)
+        depth_info = self.process_depth(depth_msg)
+        lidar_info = self.process_lidar(lidar_msg)
+        imu_info = self.process_imu(imu_msg)
+        
+        # Combine information
+        fused_result = {
+            'timestamp': self.get_clock().now().nanoseconds,
+            'objects_2d': camera_info['objects'],
+            'objects_3d': self.merge_2d_3d(camera_info, depth_info),
+            'obstacles': lidar_info['obstacles'],
+            'orientation': imu_info['orientation']
+        }
+        
+        return json.dumps(fused_result)
+    
+    def process_camera(self, msg):
+        # Process camera data to detect objects
+        # In practice, run object detection model
+        return {'objects': []}  # Placeholder
+    
+    def process_depth(self, msg):
+        # Process depth data
+        return {'depth_map': []}  # Placeholder
+    
+    def process_lidar(self, msg):
+        # Process LiDAR data for obstacles
+        return {'obstacles': []}  # Placeholder
+    
+    def process_imu(self, msg):
+        # Process IMU data for orientation
+        return {'orientation': {'roll': 0, 'pitch': 0, 'yaw': 0}}  # Placeholder
+    
+    def merge_2d_3d(self, camera_info, depth_info):
+        # Merge 2D object detections with 3D depth information
+        return []  # Placeholder
+```
+
+## Manipulation Planning with AI
+
+Planning manipulation actions using AI models:
+
+```python
+class ManipulationPlannerNode(Node):
+    def __init__(self):
+        super().__init__('manipulation_planner')
+        
+        # Subscribe to perception data
+        self.perception_sub = self.create_subscription(
+            String,  # Custom message in practice
+            '/fused_perception',
+            self.perception_callback,
+            10
+        )
+        
+        # Subscribe to task commands
+        self.task_sub = self.create_subscription(
+            String,
+            '/manipulation_task',
+            self.task_callback,
+            10
+        )
+        
+        # Publish planned actions
+        self.action_pub = self.create_publisher(
+            String,  # Custom message in practice
+            '/manipulation_plan',
+            10
+        )
+        
+        self.current_task = None
+        self.perception_data = None
+    
+    def task_callback(self, msg):
+        self.current_task = msg.data
+        self.get_logger().info(f"Received manipulation task: {self.current_task}")
+        
+        # Plan action if perception data is available
+        if self.perception_data:
+            self.plan_manipulation()
+    
+    def perception_callback(self, msg):
+        self.perception_data = msg.data
+        
+        # Plan action if task is available
+        if self.current_task:
+            self.plan_manipulation()
+    
+    def plan_manipulation(self):
+        if not self.current_task or not self.perception_data:
+            return
+            
+        # Parse perception data
+        import json
+        try:
+            perception = json.loads(self.perception_data)
+        except json.JSONDecodeError:
+            self.get_logger().error("Failed to parse perception data")
+            return
+        
+        # Determine what action to take based on task and perception
+        action_plan = self.determine_action_plan(
+            self.current_task, 
+            perception
+        )
+        
+        # Publish action plan
+        action_msg = String()
+        action_msg.data = json.dumps(action_plan)
+        self.action_pub.publish(action_msg)
+        
+        self.get_logger().info(f"Published action plan: {action_plan}")
+    
+    def determine_action_plan(self, task, perception):
+        # Simplified action planning
+        # In practice, this would use more sophisticated AI
+        if "pick" in task.lower():
+            # Find target object in perception data
+            target_obj = self.find_object_in_perception(task, perception)
+            if target_obj:
+                return {
+                    'action': 'pick',
+                    'target': target_obj,
+                    'approach_pose': self.calculate_approach_pose(target_obj),
+                    'grasp_pose': self.calculate_grasp_pose(target_obj)
+                }
+        elif "place" in task.lower():
+            # Find placement location
+            placement_location = self.find_placement_location(task, perception)
+            return {
+                'action': 'place',
+                'location': placement_location
+            }
+        
+        return {'action': 'unknown', 'task': task}
+    
+    def find_object_in_perception(self, task, perception):
+        # Find object matching task description in perception data
+        # This is a simplified example
+        target_name = task.split()[-1]  # Naive: assume last word is object
+        
+        # In perception data, look for object with similar name
+        if 'objects_3d' in perception:
+            for obj in perception['objects_3d']:
+                if target_name.lower() in obj.get('name', '').lower():
+                    return obj
+        
+        return None
+    
+    def find_placement_location(self, task, perception):
+        # Find appropriate placement location
+        # Simplified implementation
+        return {'x': 0.5, 'y': 0.0, 'z': 0.8}  # Default location
+    
+    def calculate_approach_pose(self, target_obj):
+        # Calculate safe approach pose before grasping
+        # Simplified implementation
+        return {
+            'x': target_obj['position']['x'] - 0.1,  # 10cm before target
+            'y': target_obj['position']['y'],
+            'z': target_obj['position']['z'] + 0.1   # 10cm above target
+        }
+    
+    def calculate_grasp_pose(self, target_obj):
+        # Calculate grasp pose for target object
+        # Simplified implementation
+        return {
+            'x': target_obj['position']['x'],
+            'y': target_obj['position']['y'],
+            'z': target_obj['position']['z'] + target_obj['size']['height']/2
+        }
+```
+
+## Performance Evaluation
+
+Evaluating AI perception and manipulation systems:
+
+```python
+class PerformanceEvaluatorNode(Node):
+    def __init__(self):
+        super().__init__('performance_evaluator')
+        
+        # Subscribe to system outputs
+        self.detection_sub = self.create_subscription(
+            String,
+            '/object_detections',
+            self.detection_callback,
+            10
+        )
+        
+        self.manipulation_sub = self.create_subscription(
+            String,
+            '/manipulation_result',
+            self.manipulation_callback,
+            10
+        )
+        
+        # Timer for periodic evaluation
+        self.eval_timer = self.create_timer(5.0, self.evaluate_performance)
+        
+        # Metrics storage
+        self.detection_metrics = {
+            'true_positives': 0,
+            'false_positives': 0,
+            'false_negatives': 0,
+            'total_detections': 0
+        }
+        
+        self.manipulation_metrics = {
+            'success_attempts': 0,
+            'total_attempts': 0,
+            'avg_completion_time': 0
+        }
+    
+    def detection_callback(self, msg):
+        # Process detection results for evaluation
+        # In practice, compare with ground truth
+        pass
+    
+    def manipulation_callback(self, msg):
+        # Process manipulation results for evaluation
+        # Update success/failure metrics
+        pass
+    
+    def evaluate_performance(self):
+        # Calculate and log performance metrics
+        if self.detection_metrics['total_detections'] > 0:
+            precision = (self.detection_metrics['true_positives'] / 
+                        (self.detection_metrics['true_positives'] + 
+                         self.detection_metrics['false_positives'] or 1))
+            recall = (self.detection_metrics['true_positives'] / 
+                     (self.detection_metrics['true_positives'] + 
+                      self.detection_metrics['false_negatives'] or 1))
+            
+            self.get_logger().info(
+                f"Detection Performance - Precision: {precision:.2f}, "
+                f"Recall: {recall:.2f}"
+            )
+        
+        if self.manipulation_metrics['total_attempts'] > 0:
+            success_rate = (self.manipulation_metrics['success_attempts'] / 
+                           self.manipulation_metrics['total_attempts'])
+            
+            self.get_logger().info(
+                f"Manipulation Success Rate: {success_rate:.2f} "
+                f"({self.manipulation_metrics['success_attempts']}/"
+                f"{self.manipulation_metrics['total_attempts']})"
+            )
+```
+
+## Key Challenges and Practical Insights
+
+Developing AI-powered perception and manipulation systems presents several challenges:
+
+1. **Real-time Performance**: AI models must run efficiently on robot hardware
+2. **Robustness**: Systems must handle diverse and unexpected situations
+3. **Safety**: Perception and manipulation must be reliable to prevent damage
+4. **Generalization**: Models trained in simulation must work in reality
+5. **Integration**: Perception and manipulation systems must work together seamlessly
+
+## Looking Ahead
+
+In Week 11, we'll explore humanoid robot kinematics and dynamics, learning how to model and control the complex movement patterns required for bipedal locomotion and human-like manipulation.

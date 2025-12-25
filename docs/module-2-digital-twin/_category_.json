@@ -1,0 +1,10 @@
+{
+  "label": "Module 2: Digital Twin Implementation",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "title": "Digital Twin Implementation",
+    "description": "Creating and implementing digital twin systems for robot simulation and validation",
+    "slug": "/docs/module-2-digital-twin"
+  }
+}

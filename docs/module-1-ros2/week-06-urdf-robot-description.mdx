@@ -1,0 +1,595 @@
+---
+id: week-06-urdf-robot-description
+title: Week 6 – URDF and Robot Description for Humanoids
+---
+
+# Week 6: URDF and Robot Description for Humanoids
+
+## Learning Objectives
+
+By the end of this week, students will be able to:
+- Create comprehensive URDF (Unified Robot Description Format) files for humanoid robots
+- Define robot kinematics, dynamics, and visual properties
+- Understand SDF (Simulation Description Format) for simulation environments
+- Configure joint limits, physical properties, and collision geometries
+- Integrate URDF with ROS 2 and simulation environments
+
+## Introduction to URDF
+
+URDF (Unified Robot Description Format) is an XML-based format used to describe robots in ROS. For humanoid robots, URDF is crucial as it defines the robot's physical structure, including links (rigid parts), joints (connections between links), and their properties.
+
+URDF enables:
+- Robot visualization in RViz
+- Physics simulation in Gazebo
+- Kinematic analysis and motion planning
+- Collision detection and avoidance
+
+## URDF Structure for Humanoid Robots
+
+A humanoid robot URDF typically follows a hierarchical structure with a base link and branches for arms, legs, and head:
+
+```xml
+<?xml version="1.0"?>
+<robot name="my_humanoid">
+  <!-- Base link -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.3 0.2 0.5"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.3 0.2 0.5"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="10"/>
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+    </inertial>
+  </link>
+
+  <!-- Example joint connecting base to torso -->
+  <joint name="torso_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="torso"/>
+    <origin xyz="0 0 0.25" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Torso link -->
+  <link name="torso">
+    <visual>
+      <geometry>
+        <box size="0.2 0.15 0.4"/>
+      </geometry>
+      <material name="white">
+        <color rgba="1 1 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.2 0.15 0.4"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="0.5" ixy="0.0" ixz="0.0" iyy="0.5" iyz="0.0" izz="0.5"/>
+    </inertial>
+  </link>
+
+  <!-- Continue defining other links and joints for arms, legs, head -->
+</robot>
+```
+
+## Link Definition
+
+Each link represents a rigid body part of the robot and includes:
+
+### Visual Properties
+Defines how the link appears in visualization tools:
+
+```xml
+<link name="upper_arm">
+  <visual>
+    <origin xyz="0 0 0.1" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://my_robot_description/meshes/upper_arm.dae"/>
+    </geometry>
+    <material name="gray">
+      <color rgba="0.5 0.5 0.5 1"/>
+    </material>
+  </visual>
+</link>
+```
+
+### Collision Properties
+Defines shapes used for collision detection:
+
+```xml
+<link name="upper_arm">
+  <collision>
+    <origin xyz="0 0 0.1" rpy="0 0 0"/>
+    <geometry>
+      <cylinder length="0.2" radius="0.05"/>
+    </geometry>
+  </collision>
+</link>
+```
+
+### Inertial Properties
+Defines mass and inertial tensor for physics simulation:
+
+```xml
+<link name="upper_arm">
+  <inertial>
+    <origin xyz="0 0 0.1" rpy="0 0 0"/>
+    <mass value="1.5"/>
+    <inertia ixx="0.01" ixy="0.0" ixz="0.0"
+             iyy="0.01" iyz="0.0" izz="0.005"/>
+  </inertial>
+</link>
+```
+
+## Joint Definition
+
+Joints connect links and define their relative motion:
+
+### Fixed Joints
+For rigid connections:
+
+```xml
+<joint name="head_fixed_joint" type="fixed">
+  <parent link="neck"/>
+  <child link="head"/>
+  <origin xyz="0 0 0.1" rpy="0 0 0"/>
+</joint>
+```
+
+### Revolute Joints
+For rotational motion with limits:
+
+```xml
+<joint name="shoulder_pitch" type="revolute">
+  <parent link="torso"/>
+  <child link="upper_arm"/>
+  <origin xyz="0.1 0 0.2" rpy="0 0 0"/>
+  <axis xyz="0 1 0"/>  <!-- Rotation around Y axis -->
+  <limit lower="-1.57" upper="1.57" effort="100" velocity="3.0"/>
+  <dynamics damping="0.1" friction="0.0"/>
+</joint>
+```
+
+### Continuous Joints
+For unlimited rotational motion:
+
+```xml
+<joint name="head_yaw" type="continuous">
+  <parent link="neck"/>
+  <child link="head"/>
+  <origin xyz="0 0 0.1" rpy="0 0 0"/>
+  <axis xyz="0 0 1"/>  <!-- Rotation around Z axis -->
+  <dynamics damping="0.1"/>
+</joint>
+```
+
+## Complete Humanoid URDF Example
+
+Here's a simplified example of a humanoid robot with a basic structure:
+
+```xml
+<?xml version="1.0"?>
+<robot name="simple_humanoid" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Include other URDF/XACRO files -->
+  <xacro:include filename="$(find my_robot_description)/urdf/materials.xacro"/>
+  <xacro:include filename="$(find my_robot_description)/urdf/transmissions.xacro"/>
+
+  <!-- Base link -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.3 0.2 0.5"/>
+      </geometry>
+      <material name="blue"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.3 0.2 0.5"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="10"/>
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0"/>
+    </inertial>
+  </link>
+
+  <!-- Torso -->
+  <joint name="torso_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="torso"/>
+    <origin xyz="0 0 0.25"/>
+  </joint>
+
+  <link name="torso">
+    <visual>
+      <geometry>
+        <box size="0.2 0.15 0.4"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.2 0.15 0.4"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="5"/>
+      <inertia ixx="0.5" ixy="0.0" ixz="0.0" iyy="0.5" iyz="0.0" izz="0.5"/>
+    </inertial>
+  </link>
+
+  <!-- Head -->
+  <joint name="neck_joint" type="revolute">
+    <parent link="torso"/>
+    <child link="head"/>
+    <origin xyz="0 0 0.25"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.5" upper="0.5" effort="10" velocity="2.0"/>
+  </joint>
+
+  <link name="head">
+    <visual>
+      <geometry>
+        <sphere radius="0.1"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <collision>
+      <geometry>
+        <sphere radius="0.1"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+  </link>
+
+  <!-- Left Arm -->
+  <joint name="left_shoulder_pitch" type="revolute">
+    <parent link="torso"/>
+    <child link="left_upper_arm"/>
+    <origin xyz="0.15 0.1 0.1" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="50" velocity="3.0"/>
+  </joint>
+
+  <link name="left_upper_arm">
+    <visual>
+      <geometry>
+        <cylinder length="0.3" radius="0.05"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.3" radius="0.05"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.5"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.005"/>
+    </inertial>
+  </link>
+
+  <joint name="left_elbow" type="revolute">
+    <parent link="left_upper_arm"/>
+    <child link="left_lower_arm"/>
+    <origin xyz="0 0 -0.3"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="2.0" effort="30" velocity="3.0"/>
+  </joint>
+
+  <link name="left_lower_arm">
+    <visual>
+      <geometry>
+        <cylinder length="0.25" radius="0.04"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.25" radius="0.04"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1"/>
+      <inertia ixx="0.005" ixy="0.0" ixz="0.0" iyy="0.005" iyz="0.0" izz="0.003"/>
+    </inertial>
+  </link>
+
+  <!-- Right Arm (similar to left) -->
+  <joint name="right_shoulder_pitch" type="revolute">
+    <parent link="torso"/>
+    <child link="right_upper_arm"/>
+    <origin xyz="0.15 -0.1 0.1" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="50" velocity="3.0"/>
+  </joint>
+
+  <link name="right_upper_arm">
+    <visual>
+      <geometry>
+        <cylinder length="0.3" radius="0.05"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.3" radius="0.05"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.5"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.005"/>
+    </inertial>
+  </link>
+
+  <!-- Left Leg -->
+  <joint name="left_hip_pitch" type="revolute">
+    <parent link="torso"/>
+    <child link="left_thigh"/>
+    <origin xyz="-0.1 0.08 -0.1" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.0" upper="1.0" effort="100" velocity="2.0"/>
+  </joint>
+
+  <link name="left_thigh">
+    <visual>
+      <geometry>
+        <cylinder length="0.4" radius="0.06"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.4" radius="0.06"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="2.5"/>
+      <inertia ixx="0.02" ixy="0.0" ixz="0.0" iyy="0.02" iyz="0.0" izz="0.008"/>
+    </inertial>
+  </link>
+
+  <!-- Right Leg -->
+  <joint name="right_hip_pitch" type="revolute">
+    <parent link="torso"/>
+    <child link="right_thigh"/>
+    <origin xyz="-0.1 -0.08 -0.1" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.0" upper="1.0" effort="100" velocity="2.0"/>
+  </joint>
+
+  <link name="right_thigh">
+    <visual>
+      <geometry>
+        <cylinder length="0.4" radius="0.06"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.4" radius="0.06"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="2.5"/>
+      <inertia ixx="0.02" ixy="0.0" ixz="0.0" iyy="0.02" iyz="0.0" izz="0.008"/>
+    </inertial>
+  </link>
+
+  <!-- Transmissions for ros2_control -->
+  <xacro:transmission_block joint_name="left_shoulder_pitch"/>
+  <xacro:transmission_block joint_name="right_shoulder_pitch"/>
+  <xacro:transmission_block joint_name="left_hip_pitch"/>
+  <xacro:transmission_block joint_name="right_hip_pitch"/>
+  <xacro:transmission_block joint_name="neck_joint"/>
+</robot>
+```
+
+## Using XACRO for Complex URDFs
+
+XACRO (XML Macros) helps manage complex URDFs by allowing parameterization and reuse:
+
+```xml
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Define properties -->
+  <xacro:property name="M_PI" value="3.1415926535897931" />
+  <xacro:property name="arm_length" value="0.3" />
+  <xacro:property name="arm_radius" value="0.05" />
+
+  <!-- Macro for creating an arm -->
+  <xacro:macro name="arm" params="side reflect">
+    <joint name="${side}_shoulder_pitch" type="revolute">
+      <parent link="torso"/>
+      <child link="${side}_upper_arm"/>
+      <origin xyz="0.15 ${reflect*0.1} 0.1" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="-1.57" upper="1.57" effort="50" velocity="3.0"/>
+    </joint>
+
+    <link name="${side}_upper_arm">
+      <visual>
+        <geometry>
+          <cylinder length="${arm_length}" radius="${arm_radius}"/>
+        </geometry>
+        <material name="gray"/>
+      </visual>
+      <collision>
+        <geometry>
+          <cylinder length="${arm_length}" radius="${arm_radius}"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="1.5"/>
+        <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.005"/>
+      </inertial>
+    </link>
+  </xacro:macro>
+
+  <!-- Use the macro to create both arms -->
+  <xacro:arm side="left" reflect="1" />
+  <xacro:arm side="right" reflect="-1" />
+
+</robot>
+```
+
+## SDF (Simulation Description Format)
+
+While URDF is used in ROS, Gazebo uses SDF (Simulation Description Format). For simulation, URDF is often converted to SDF automatically, but you can also write native SDF files:
+
+```xml
+<?xml version="1.0" ?>
+<sdf version="1.7">
+  <model name="simple_humanoid">
+    <link name="base_link">
+      <pose>0 0 0.5 0 0 0</pose>
+      <inertial>
+        <mass>10.0</mass>
+        <inertia>
+          <ixx>1.0</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>1.0</iyy>
+          <iyz>0.0</iyz>
+          <izz>1.0</izz>
+        </inertia>
+      </inertial>
+
+      <visual name="visual">
+        <geometry>
+          <box>
+            <size>0.3 0.2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0 0 1 1</ambient>
+          <diffuse>0 0 1 1</diffuse>
+        </material>
+      </visual>
+
+      <collision name="collision">
+        <geometry>
+          <box>
+            <size>0.3 0.2 0.5</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+
+    <!-- Physics properties -->
+    <static>false</static>
+    <self_collide>false</self_collide>
+    <enable_wind>false</enable_wind>
+    <kinematic>false</kinematic>
+  </model>
+</sdf>
+```
+
+## Integrating URDF with ROS 2
+
+### Robot State Publisher
+
+The robot_state_publisher node reads the URDF and publishes the robot's joint states to tf2:
+
+```xml
+<!-- In launch file -->
+<Node
+  pkg="robot_state_publisher"
+  exec="robot_state_publisher"
+  name="robot_state_publisher"
+  parameters="[
+    {'robot_description': ParameterValue(
+      Command(['xacro ', LaunchConfiguration('model')]),
+      value_type=str
+    )}
+  ]"
+/>
+```
+
+### Joint State Publisher
+
+For simulation, joint_state_publisher provides static joint states:
+
+```xml
+<Node
+  pkg="joint_state_publisher"
+  exec="joint_state_publisher"
+  name="joint_state_publisher"
+/>
+```
+
+## Best Practices for Humanoid URDFs
+
+### 1. Proper Mass and Inertia Values
+Accurate physical properties are crucial for realistic simulation:
+- Use CAD software to calculate inertial properties
+- Verify that the total robot mass matches expectations
+- Ensure inertial tensors follow physical laws (triangle inequality)
+
+### 2. Appropriate Joint Limits
+Set realistic joint limits based on mechanical constraints:
+- Prevent self-collisions
+- Respect actuator limitations
+- Consider human-like ranges of motion for humanoid robots
+
+### 3. Collision Geometry Optimization
+Balance accuracy with performance:
+- Use simple shapes (boxes, cylinders) for collision
+- Simplify complex geometries where possible
+- Avoid overly detailed meshes in collision elements
+
+### 4. Hierarchical Organization
+Structure your URDF files logically:
+- Separate files for different body parts
+- Use XACRO for parameterization
+- Include proper documentation
+
+## Validation and Testing
+
+### Checking URDF Syntax
+```bash
+# Validate URDF syntax
+check_urdf /path/to/robot.urdf
+
+# View robot structure
+urdf_to_graphiz /path/to/robot.urdf
+```
+
+### Visualizing in RViz
+```bash
+# Launch robot state publisher
+ros2 launch my_robot_description view_robot.launch.py
+```
+
+## Key Challenges and Practical Insights
+
+Creating URDFs for humanoid robots presents several challenges:
+
+1. **Complexity Management**: Humanoid robots have many degrees of freedom, making URDFs complex. Use XACRO macros to manage this complexity.
+
+2. **Physical Accuracy**: Getting mass, inertia, and friction values right is critical for realistic simulation but can be difficult to determine.
+
+3. **Computational Performance**: Complex humanoid models can be computationally expensive in simulation. Optimize collision geometries for performance.
+
+4. **Integration with Control**: URDF must align with control system expectations, especially for joint names and limits.
+
+## Looking Ahead
+
+In Week 7, we'll dive into Gazebo simulation, learning how to set up physics simulation environments for humanoid robots, configure sensors, and run realistic simulations that can be used for testing and training AI models.

@@ -1,0 +1,1071 @@
+---
+id: week-11-kinematics-dynamics
+title: Week 11 – Humanoid Robot Kinematics and Dynamics
+---
+
+# Week 11: Humanoid Robot Kinematics and Dynamics
+
+## Learning Objectives
+
+By the end of this week, students will be able to:
+- Understand forward and inverse kinematics for humanoid robots
+- Apply dynamics principles to humanoid movement and control
+- Implement balance control algorithms for bipedal locomotion
+- Design grasping and manipulation strategies for humanoid hands
+- Analyze and optimize humanoid robot motion patterns
+
+## Introduction to Humanoid Kinematics
+
+Humanoid robots present unique kinematic challenges due to their human-like structure with multiple degrees of freedom. Unlike simpler robotic systems, humanoid robots must navigate complex kinematic constraints while maintaining balance and performing human-like tasks.
+
+### Degrees of Freedom in Humanoid Robots
+
+A typical humanoid robot has 28+ degrees of freedom:
+- **Head**: 3 DOF (yaw, pitch, roll)
+- **Arms**: 7 DOF each (shoulder: 3, elbow: 1, wrist: 3)
+- **Legs**: 6 DOF each (hip: 3, knee: 1, ankle: 2)
+- **Torso**: 2-3 DOF (waist rotation, lateral bending)
+
+This creates complex kinematic chains that must be solved for effective control.
+
+## Forward Kinematics
+
+Forward kinematics calculates the end-effector position given joint angles. For humanoid robots, this is essential for understanding where limbs are in space.
+
+### Mathematical Representation
+
+Using the Denavit-Hartenberg (DH) convention:
+
+```python
+import numpy as np
+from scipy.spatial.transform import Rotation as R
+
+def dh_transform(a, alpha, d, theta):
+    """Compute DH transformation matrix"""
+    ct, st = np.cos(theta), np.sin(theta)
+    ca, sa = np.cos(alpha), np.sin(alpha)
+    
+    return np.array([
+        [ct, -st*ca, st*sa, a*ct],
+        [st, ct*ca, -ct*sa, a*st],
+        [0, sa, ca, d],
+        [0, 0, 0, 1]
+    ])
+
+def forward_kinematics(joint_angles, dh_params):
+    """
+    Compute forward kinematics for a kinematic chain
+    
+    Args:
+        joint_angles: List of joint angles
+        dh_params: List of DH parameters [(a, alpha, d, theta), ...]
+    
+    Returns:
+        Transformation matrix from base to end-effector
+    """
+    T = np.eye(4)  # Identity matrix
+    
+    for i, (a, alpha, d, theta_offset) in enumerate(dh_params):
+        # Add joint angle to theta
+        theta = joint_angles[i] + theta_offset
+        T_link = dh_transform(a, alpha, d, theta)
+        T = T @ T_link
+    
+    return T
+
+# Example for a simplified humanoid arm
+def compute_arm_fk(joint_angles):
+    """Compute forward kinematics for a 3-DOF arm"""
+    # DH parameters for a simplified arm
+    dh_params = [
+        (0, np.pi/2, 0, joint_angles[0]),      # Shoulder yaw
+        (0.3, 0, 0, joint_angles[1]),          # Shoulder pitch  
+        (0.3, 0, 0, joint_angles[2])           # Elbow pitch
+    ]
+    
+    return forward_kinematics(joint_angles, dh_params)
+```
+
+### Implementing Forward Kinematics in ROS 2
+
+```python
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import JointState
+from geometry_msgs.msg import PoseStamped
+from tf2_ros import TransformBroadcaster
+import tf2_geometry_msgs
+import numpy as np
+
+class ForwardKinematicsNode(Node):
+    def __init__(self):
+        super().__init__('forward_kinematics_node')
+        
+        # Subscribe to joint states
+        self.joint_sub = self.create_subscription(
+            JointState,
+            '/joint_states',
+            self.joint_callback,
+            10
+        )
+        
+        # Publisher for end-effector poses
+        self.left_hand_pub = self.create_publisher(
+            PoseStamped,
+            '/left_hand_pose',
+            10
+        )
+        
+        self.right_hand_pub = self.create_publisher(
+            PoseStamped,
+            '/right_hand_pose',
+            10
+        )
+        
+        # Transform broadcaster for visualization
+        self.tf_broadcaster = TransformBroadcaster(self)
+        
+        # Store joint names and DH parameters
+        self.joint_names = []  # Will be populated from joint states
+        self.left_arm_dh = self.get_left_arm_dh_params()
+        self.right_arm_dh = self.get_right_arm_dh_params()
+    
+    def get_left_arm_dh_params(self):
+        """Define DH parameters for left arm"""
+        # Simplified example - real humanoid would have more complex parameters
+        return [
+            (0, np.pi/2, 0.2, 0),      # Shoulder yaw
+            (0, -np.pi/2, 0, 0),       # Shoulder pitch
+            (0.3, 0, 0, 0),            # Shoulder roll
+            (0, np.pi/2, 0, 0),        # Elbow pitch
+            (0.25, 0, 0, 0),           # Wrist pitch
+            (0, 0, 0, 0)               # Wrist roll
+        ]
+    
+    def get_right_arm_dh_params(self):
+        """Define DH parameters for right arm"""
+        # Similar to left arm but mirrored
+        return [
+            (0, np.pi/2, 0.2, 0),      # Shoulder yaw
+            (0, -np.pi/2, 0, 0),       # Shoulder pitch
+            (0.3, 0, 0, 0),            # Shoulder roll
+            (0, np.pi/2, 0, 0),        # Elbow pitch
+            (0.25, 0, 0, 0),           # Wrist pitch
+            (0, 0, 0, 0)               # Wrist roll
+        ]
+    
+    def joint_callback(self, msg):
+        # Update joint names if needed
+        if not self.joint_names:
+            self.joint_names = msg.name
+        
+        # Get joint angles for left arm
+        left_arm_joints = ['left_shoulder_yaw', 'left_shoulder_pitch', 
+                          'left_shoulder_roll', 'left_elbow_pitch', 
+                          'left_wrist_pitch', 'left_wrist_roll']
+        
+        left_angles = []
+        for joint_name in left_arm_joints:
+            if joint_name in self.joint_names:
+                idx = self.joint_names.index(joint_name)
+                left_angles.append(msg.position[idx])
+        
+        if len(left_angles) == len(self.left_arm_dh):
+            # Compute forward kinematics for left arm
+            left_pose = self.compute_fk(left_angles, self.left_arm_dh)
+            
+            # Publish pose
+            pose_msg = PoseStamped()
+            pose_msg.header.stamp = self.get_clock().now().to_msg()
+            pose_msg.header.frame_id = 'base_link'
+            pose_msg.pose.position.x = left_pose[0, 3]
+            pose_msg.pose.position.y = left_pose[1, 3]
+            pose_msg.pose.position.z = left_pose[2, 3]
+            
+            # Convert rotation matrix to quaternion
+            rotation_matrix = left_pose[:3, :3]
+            r = R.from_matrix(rotation_matrix)
+            quat = r.as_quat()
+            pose_msg.pose.orientation.x = quat[0]
+            pose_msg.pose.orientation.y = quat[1]
+            pose_msg.pose.orientation.z = quat[2]
+            pose_msg.pose.orientation.w = quat[3]
+            
+            self.left_hand_pub.publish(pose_msg)
+            
+            # Broadcast transform for visualization
+            t = TransformStamped()
+            t.header.stamp = self.get_clock().now().to_msg()
+            t.header.frame_id = 'base_link'
+            t.child_frame_id = 'left_hand'
+            t.transform.translation.x = left_pose[0, 3]
+            t.transform.translation.y = left_pose[1, 3]
+            t.transform.translation.z = left_pose[2, 3]
+            t.transform.rotation.x = quat[0]
+            t.transform.rotation.y = quat[1]
+            t.transform.rotation.z = quat[2]
+            t.transform.rotation.w = quat[3]
+            
+            self.tf_broadcaster.sendTransform(t)
+    
+    def compute_fk(self, joint_angles, dh_params):
+        """Compute forward kinematics"""
+        T = np.eye(4)
+        
+        for i, (a, alpha, d, theta_offset) in enumerate(dh_params):
+            theta = joint_angles[i] + theta_offset
+            T_link = dh_transform(a, alpha, d, theta)
+            T = T @ T_link
+        
+        return T
+```
+
+## Inverse Kinematics
+
+Inverse kinematics (IK) is more challenging for humanoid robots as it involves solving for joint angles to achieve a desired end-effector pose. This often has multiple solutions or no solutions.
+
+### Analytical vs Numerical IK
+
+For complex humanoid structures, numerical methods are typically used:
+
+```python
+from scipy.optimize import minimize
+import numpy as np
+
+class InverseKinematicsSolver:
+    def __init__(self, dh_params, joint_limits=None):
+        self.dh_params = dh_params
+        self.joint_limits = joint_limits or [(-np.pi, np.pi)] * len(dh_params)
+    
+    def objective_function(self, joint_angles, target_pose):
+        """Objective function to minimize"""
+        current_pose = self.forward_kinematics(joint_angles)
+        
+        # Position error
+        pos_error = np.linalg.norm(
+            target_pose[:3, 3] - current_pose[:3, 3]
+        )
+        
+        # Orientation error (using rotation matrix difference)
+        rot_error = np.linalg.norm(
+            target_pose[:3, :3] - current_pose[:3, :3]
+        )
+        
+        return pos_error + 0.5 * rot_error
+    
+    def forward_kinematics(self, joint_angles):
+        """Compute forward kinematics for optimization"""
+        T = np.eye(4)
+        
+        for i, (a, alpha, d, theta_offset) in enumerate(self.dh_params):
+            theta = joint_angles[i] + theta_offset
+            T_link = dh_transform(a, alpha, d, theta)
+            T = T @ T_link
+        
+        return T
+    
+    def solve_ik(self, target_pose, initial_guess=None):
+        """
+        Solve inverse kinematics using numerical optimization
+        """
+        if initial_guess is None:
+            initial_guess = np.zeros(len(self.dh_params))
+        
+        # Define bounds
+        bounds = self.joint_limits
+        
+        # Optimize
+        result = minimize(
+            self.objective_function,
+            initial_guess,
+            args=(target_pose,),
+            method='L-BFGS-B',
+            bounds=bounds
+        )
+        
+        if result.success:
+            return result.x
+        else:
+            return None  # IK solution not found
+
+# Example usage for humanoid arm
+def solve_arm_ik(target_position, target_orientation):
+    # Define DH parameters for the arm
+    dh_params = [
+        (0, np.pi/2, 0.2, 0),      # Shoulder yaw
+        (0, -np.pi/2, 0, 0),       # Shoulder pitch
+        (0.3, 0, 0, 0),            # Shoulder roll
+        (0, np.pi/2, 0, 0),        # Elbow pitch
+        (0.25, 0, 0, 0),           # Wrist pitch
+        (0, 0, 0, 0)               # Wrist roll
+    ]
+    
+    # Create target pose transformation matrix
+    target_pose = np.eye(4)
+    target_pose[:3, 3] = target_position  # Position
+    target_pose[:3, :3] = target_orientation  # Orientation matrix
+    
+    # Solve IK
+    ik_solver = InverseKinematicsSolver(dh_params)
+    joint_angles = ik_solver.solve_ik(target_pose)
+    
+    return joint_angles
+```
+
+### ROS 2 IK Service
+
+```python
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile
+from geometry_msgs.srv import GetPositionIK
+from sensor_msgs.msg import JointState
+import numpy as np
+
+class HumanoidIKService(Node):
+    def __init__(self):
+        super().__init__('humanoid_ik_service')
+        
+        # Create IK service
+        self.ik_service = self.create_service(
+            GetPositionIK,
+            'calculate_ik',
+            self.ik_callback
+        )
+        
+        # Publisher for joint commands
+        self.joint_pub = self.create_publisher(
+            JointState,
+            '/joint_commands',
+            10
+        )
+        
+        # Initialize IK solvers for different limbs
+        self.left_arm_ik = self.initialize_left_arm_ik()
+        self.right_arm_ik = self.initialize_right_arm_ik()
+        self.left_leg_ik = self.initialize_left_leg_ik()
+        self.right_leg_ik = self.initialize_right_leg_ik()
+    
+    def initialize_left_arm_ik(self):
+        # Initialize IK solver for left arm
+        dh_params = [
+            (0, np.pi/2, 0.2, 0),      # Shoulder yaw
+            (0, -np.pi/2, 0, 0),       # Shoulder pitch
+            (0.3, 0, 0, 0),            # Shoulder roll
+            (0, np.pi/2, 0, 0),        # Elbow pitch
+            (0.25, 0, 0, 0),           # Wrist pitch
+            (0, 0, 0, 0)               # Wrist roll
+        ]
+        joint_limits = [(-2.0, 2.0)] * 6  # Example limits
+        return InverseKinematicsSolver(dh_params, joint_limits)
+    
+    def initialize_right_arm_ik(self):
+        # Similar to left arm
+        dh_params = [
+            (0, np.pi/2, 0.2, 0),      # Shoulder yaw
+            (0, -np.pi/2, 0, 0),       # Shoulder pitch
+            (0.3, 0, 0, 0),            # Shoulder roll
+            (0, np.pi/2, 0, 0),        # Elbow pitch
+            (0.25, 0, 0, 0),           # Wrist pitch
+            (0, 0, 0, 0)               # Wrist roll
+        ]
+        joint_limits = [(-2.0, 2.0)] * 6
+        return InverseKinematicsSolver(dh_params, joint_limits)
+    
+    def initialize_left_leg_ik(self):
+        # Simplified leg IK (3 DOF for hip, 1 for knee, 2 for ankle)
+        dh_params = [
+            (0, np.pi/2, 0.1, 0),      # Hip yaw
+            (0, -np.pi/2, 0, 0),       # Hip pitch
+            (0.4, 0, 0, 0),            # Hip roll
+            (0, 0, -0.4, 0),           # Knee pitch
+            (0, 0, -0.1, 0),           # Ankle pitch
+            (0, np.pi/2, 0, 0)         # Ankle roll
+        ]
+        joint_limits = [(-1.5, 1.5)] * 6
+        return InverseKinematicsSolver(dh_params, joint_limits)
+    
+    def initialize_right_leg_ik(self):
+        # Similar to left leg
+        dh_params = [
+            (0, np.pi/2, 0.1, 0),      # Hip yaw
+            (0, -np.pi/2, 0, 0),       # Hip pitch
+            (0.4, 0, 0, 0),            # Hip roll
+            (0, 0, -0.4, 0),           # Knee pitch
+            (0, 0, -0.1, 0),           # Ankle pitch
+            (0, np.pi/2, 0, 0)         # Ankle roll
+        ]
+        joint_limits = [(-1.5, 1.5)] * 6
+        return InverseKinematicsSolver(dh_params, joint_limits)
+    
+    def ik_callback(self, request, response):
+        """Handle IK service request"""
+        try:
+            # Determine which limb to solve for
+            target_pose = self.pose_to_matrix(request.pose_stamped.pose)
+            
+            if 'left_arm' in request.ik_link_name:
+                joint_angles = self.left_arm_ik.solve_ik(target_pose)
+                joint_names = [
+                    'left_shoulder_yaw', 'left_shoulder_pitch', 
+                    'left_shoulder_roll', 'left_elbow_pitch',
+                    'left_wrist_pitch', 'left_wrist_roll'
+                ]
+            elif 'right_arm' in request.ik_link_name:
+                joint_angles = self.right_arm_ik.solve_ik(target_pose)
+                joint_names = [
+                    'right_shoulder_yaw', 'right_shoulder_pitch', 
+                    'right_shoulder_roll', 'right_elbow_pitch',
+                    'right_wrist_pitch', 'right_wrist_roll'
+                ]
+            elif 'left_leg' in request.ik_link_name:
+                joint_angles = self.left_leg_ik.solve_ik(target_pose)
+                joint_names = [
+                    'left_hip_yaw', 'left_hip_pitch', 
+                    'left_hip_roll', 'left_knee_pitch',
+                    'left_ankle_pitch', 'left_ankle_roll'
+                ]
+            elif 'right_leg' in request.ik_link_name:
+                joint_angles = self.right_leg_ik.solve_ik(target_pose)
+                joint_names = [
+                    'right_hip_yaw', 'right_hip_pitch', 
+                    'right_hip_roll', 'right_knee_pitch',
+                    'right_ankle_pitch', 'right_ankle_roll'
+                ]
+            else:
+                response.error_code.val = 1  # Error
+                response.error_code.error_string = "Unknown link name"
+                return response
+            
+            if joint_angles is not None:
+                # Create joint state message
+                joint_state = JointState()
+                joint_state.header.stamp = self.get_clock().now().to_msg()
+                joint_state.name = joint_names
+                joint_state.position = joint_angles.tolist()
+                
+                # Publish joint commands
+                self.joint_pub.publish(joint_state)
+                
+                response.solution = joint_state
+                response.error_code.val = 0  # Success
+            else:
+                response.error_code.val = 1  # Error
+                response.error_code.error_string = "IK solution not found"
+        
+        except Exception as e:
+            response.error_code.val = 1
+            response.error_code.error_string = f"IK computation error: {str(e)}"
+        
+        return response
+    
+    def pose_to_matrix(self, pose):
+        """Convert geometry_msgs/Pose to 4x4 transformation matrix"""
+        # Convert quaternion to rotation matrix
+        quat = [pose.orientation.x, pose.orientation.y, 
+                pose.orientation.z, pose.orientation.w]
+        r = R.from_quat(quat)
+        rotation_matrix = r.as_matrix()
+        
+        # Create transformation matrix
+        T = np.eye(4)
+        T[:3, :3] = rotation_matrix
+        T[0, 3] = pose.position.x
+        T[1, 3] = pose.position.y
+        T[2, 3] = pose.position.z
+        
+        return T
+```
+
+## Dynamics and Control
+
+Humanoid dynamics involve complex interactions between multiple body segments, actuators, and environmental forces.
+
+### Equation of Motion
+
+The equation of motion for a humanoid robot is given by:
+
+M(q)q̈ + C(q, q̇)q̇ + g(q) = τ + J^T F
+
+Where:
+- M(q) is the mass matrix
+- C(q, q̇) accounts for Coriolis and centrifugal forces
+- g(q) represents gravitational forces
+- τ represents joint torques
+- J is the Jacobian matrix
+- F represents external forces
+
+### Center of Mass and Stability
+
+For bipedal locomotion, maintaining the center of mass (CoM) within the support polygon is crucial:
+
+```python
+import numpy as np
+
+class CenterOfMassCalculator:
+    def __init__(self, robot_urdf):
+        """
+        Initialize with robot model information
+        In practice, this would parse URDF to get link masses and positions
+        """
+        self.link_masses = {}  # Mass of each link
+        self.link_coms = {}    # Center of mass of each link relative to link frame
+    
+    def calculate_com(self, joint_positions):
+        """
+        Calculate center of mass of the entire robot
+        """
+        total_mass = 0
+        weighted_com = np.zeros(3)
+        
+        # For each link, calculate its contribution to total CoM
+        for link_name, mass in self.link_masses.items():
+            # Get transform of link in base frame
+            link_pose = self.get_link_pose(link_name, joint_positions)
+            
+            # Calculate position of link's CoM in base frame
+            link_com_in_base = link_pose[:3, :3] @ self.link_coms[link_name] + link_pose[:3, 3]
+            
+            # Add to weighted sum
+            weighted_com += mass * link_com_in_base
+            total_mass += mass
+        
+        if total_mass > 0:
+            return weighted_com / total_mass
+        else:
+            return np.zeros(3)
+    
+    def get_link_pose(self, link_name, joint_positions):
+        """
+        Get pose of a link in base frame given joint positions
+        This would involve forward kinematics calculations
+        """
+        # Simplified - in practice, this would compute full FK
+        return np.eye(4)
+
+class BalanceController:
+    def __init__(self, robot_model):
+        self.com_calculator = CenterOfMassCalculator(robot_model)
+        self.support_polygon = []  # Points defining support polygon
+        self.zmp_reference = np.array([0.0, 0.0])  # Zero moment point reference
+    
+    def compute_balance_metrics(self, joint_positions, joint_velocities):
+        """
+        Compute metrics for balance assessment
+        """
+        # Calculate center of mass
+        com_pos = self.com_calculator.calculate_com(joint_positions)
+        
+        # Calculate Zero Moment Point (ZMP)
+        zmp = self.calculate_zmp(com_pos, joint_positions, joint_velocities)
+        
+        # Check if ZMP is within support polygon
+        zmp_in_polygon = self.is_point_in_polygon(zmp[:2], self.support_polygon)
+        
+        return {
+            'com_position': com_pos,
+            'zmp_position': zmp,
+            'zmp_in_support': zmp_in_polygon,
+            'stability_margin': self.calculate_stability_margin(zmp[:2], self.support_polygon)
+        }
+    
+    def calculate_zmp(self, com_pos, joint_positions, joint_velocities):
+        """
+        Calculate Zero Moment Point
+        Simplified 2D calculation
+        """
+        # Simplified ZMP calculation
+        # In practice, this would involve more complex dynamics
+        g = 9.81  # Gravity
+        h = com_pos[2]  # Height of CoM
+        
+        # ZMP_x = CoM_x - h/g * CoM_acc_x
+        # ZMP_y = CoM_y - h/g * CoM_acc_y
+        # For now, just return CoM position as approximation
+        return com_pos[:3]  # Simplified
+    
+    def is_point_in_polygon(self, point, polygon):
+        """
+        Check if a 2D point is inside a polygon using ray casting
+        """
+        x, y = point
+        n = len(polygon)
+        inside = False
+        
+        p1x, p1y = polygon[0]
+        for i in range(1, n + 1):
+            p2x, p2y = polygon[i % n]
+            if y > min(p1y, p2y):
+                if y <= max(p1y, p2y):
+                    if x <= max(p1x, p2x):
+                        if p1y != p2y:
+                            xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                        if p1x == p2x or x <= xinters:
+                            inside = not inside
+            p1x, p1y = p2x, p2y
+        
+        return inside
+    
+    def calculate_stability_margin(self, zmp, polygon):
+        """
+        Calculate minimum distance from ZMP to polygon edges
+        Positive value means stable, negative means unstable
+        """
+        min_distance = float('inf')
+        
+        for i in range(len(polygon)):
+            p1 = polygon[i]
+            p2 = polygon[(i + 1) % len(polygon)]
+            
+            # Calculate distance from point to line segment
+            distance = self.point_to_line_distance(zmp, p1, p2)
+            min_distance = min(min_distance, distance)
+        
+        return min_distance
+    
+    def point_to_line_distance(self, point, line_start, line_end):
+        """
+        Calculate distance from point to line segment
+        """
+        x, y = point
+        x1, y1 = line_start
+        x2, y2 = line_end
+        
+        # Vector from line_start to point
+        A = x - x1
+        B = y - y1
+        # Vector of the line
+        C = x2 - x1
+        D = y2 - y1
+        
+        dot = A * C + B * D
+        len_sq = C * C + D * D
+        
+        if len_sq == 0:  # Line segment is actually a point
+            return np.sqrt(A * A + B * B)
+        
+        param = dot / len_sq
+        
+        if param < 0:  # Point is behind line_start
+            xx = x1
+            yy = y1
+        elif param > 1:  # Point is past line_end
+            xx = x2
+            yy = y2
+        else:  # Projection falls on the line segment
+            xx = x1 + param * C
+            yy = y1 + param * D
+        
+        dx = x - xx
+        dy = y - yy
+        return np.sqrt(dx * dx + dy * dy)
+```
+
+## Bipedal Locomotion
+
+Walking for humanoid robots requires careful control of balance and gait patterns:
+
+```python
+class WalkingController:
+    def __init__(self, robot_model):
+        self.balance_controller = BalanceController(robot_model)
+        self.step_length = 0.3  # meters
+        self.step_height = 0.05  # meters
+        self.step_duration = 1.0  # seconds
+        self.nominal_com_height = 0.8  # meters
+        
+        # Walking state
+        self.current_support_foot = 'left'  # 'left' or 'right'
+        self.swing_foot = 'right'
+        self.walk_phase = 0.0  # 0.0 to 1.0
+        self.step_count = 0
+    
+    def generate_footstep_plan(self, walk_distance, step_length=0.3):
+        """
+        Generate a sequence of footsteps for walking
+        """
+        num_steps = int(walk_distance / step_length)
+        footsteps = []
+        
+        for i in range(num_steps):
+            # Alternate support feet
+            support_foot = 'left' if i % 2 == 0 else 'right'
+            swing_foot = 'right' if i % 2 == 0 else 'left'
+            
+            # Calculate foot position
+            x = (i + 1) * step_length
+            y = 0.1 if swing_foot == 'left' else -0.1  # Stance width
+            
+            footsteps.append({
+                'swing_foot': swing_foot,
+                'position': np.array([x, y, 0]),
+                'support_foot': support_foot,
+                'step_number': i
+            })
+        
+        return footsteps
+    
+    def compute_walking_trajectory(self, dt):
+        """
+        Compute walking trajectory for the current phase
+        """
+        # Update walk phase
+        self.walk_phase += dt / self.step_duration
+        if self.walk_phase >= 1.0:
+            self.walk_phase = 0.0
+            self.step_count += 1
+            
+            # Switch support foot
+            if self.current_support_foot == 'left':
+                self.current_support_foot = 'right'
+                self.swing_foot = 'left'
+            else:
+                self.current_support_foot = 'left'
+                self.swing_foot = 'right'
+        
+        # Calculate CoM trajectory (simplified)
+        com_trajectory = self.calculate_com_trajectory()
+        
+        # Calculate swing foot trajectory
+        swing_foot_trajectory = self.calculate_swing_foot_trajectory()
+        
+        return {
+            'com_trajectory': com_trajectory,
+            'swing_foot_trajectory': swing_foot_trajectory,
+            'support_foot': self.current_support_foot
+        }
+    
+    def calculate_com_trajectory(self):
+        """
+        Calculate CoM trajectory during walking
+        Uses inverted pendulum model
+        """
+        # Simplified CoM trajectory following a 3rd order polynomial
+        # to maintain balance during walking
+        phase = self.walk_phase
+        
+        # CoM moves horizontally to stay above support foot
+        if self.current_support_foot == 'left':
+            target_x = self.step_count * self.step_length
+            target_y = 0.1  # Left foot position
+        else:
+            target_x = self.step_count * self.step_length
+            target_y = -0.1  # Right foot position
+        
+        # Add smooth transition between steps
+        x = target_x
+        y = target_y
+        z = self.nominal_com_height  # Keep CoM at constant height
+        
+        return np.array([x, y, z])
+    
+    def calculate_swing_foot_trajectory(self):
+        """
+        Calculate trajectory for the swing foot
+        """
+        phase = self.walk_phase
+        
+        # Calculate target position for swing foot
+        if self.swing_foot == 'left':
+            target_x = (self.step_count + 1) * self.step_length
+            target_y = 0.1
+        else:
+            target_x = (self.step_count + 1) * self.step_length  
+            target_y = -0.1
+        
+        # Current support foot position
+        if self.current_support_foot == 'left':
+            support_x = self.step_count * self.step_length
+            support_y = 0.1
+        else:
+            support_x = self.step_count * self.step_length
+            support_y = -0.1
+        
+        # Swing foot trajectory: 3rd order polynomial for smooth motion
+        # Phase: 0.0 = start of swing, 1.0 = end of swing
+        
+        # X trajectory: move from support foot to target
+        x = support_x + (target_x - support_x) * phase
+        
+        # Y trajectory: move from support foot to target
+        y = support_y + (target_y - support_y) * phase
+        
+        # Z trajectory: lift foot and place it down
+        # Use 3rd order polynomial for smooth lift and place
+        lift_factor = 1.0 - 6*(phase**2) + 8*(phase**3) - 3*(phase**4)
+        z = 0.0 + self.step_height * lift_factor
+        
+        return np.array([x, y, z])
+
+class WalkingNode(Node):
+    def __init__(self):
+        super().__init__('walking_controller')
+        
+        # Subscribe to robot state
+        self.joint_state_sub = self.create_subscription(
+            JointState,
+            '/joint_states',
+            self.joint_state_callback,
+            10
+        )
+        
+        # Publisher for walking commands
+        self.trajectory_pub = self.create_publisher(
+            JointTrajectory,
+            '/walking_trajectory',
+            10
+        )
+        
+        # Timer for walking control
+        self.walk_timer = self.create_timer(0.01, self.walk_control_step)
+        
+        # Initialize walking controller
+        self.walking_controller = WalkingController(None)  # Pass robot model
+        self.joint_positions = {}
+        self.joint_velocities = {}
+        
+        # Walking state
+        self.is_walking = False
+        self.walk_target = np.array([0.0, 0.0])  # x, y target
+    
+    def joint_state_callback(self, msg):
+        """Update joint positions from robot state"""
+        for i, name in enumerate(msg.name):
+            if i < len(msg.position):
+                self.joint_positions[name] = msg.position[i]
+            if i < len(msg.velocity):
+                self.joint_velocities[name] = msg.velocity[i]
+    
+    def start_walking(self, target_position):
+        """Start walking toward target position"""
+        self.walk_target = target_position
+        self.is_walking = True
+        self.get_logger().info(f"Starting to walk to: {target_position}")
+    
+    def walk_control_step(self):
+        """Main walking control loop"""
+        if not self.is_walking:
+            return
+        
+        # Compute walking trajectory
+        trajectory = self.walking_controller.compute_walking_trajectory(0.01)  # dt = 0.01s
+        
+        # Convert to joint commands using inverse kinematics
+        joint_commands = self.trajectory_to_joints(trajectory)
+        
+        # Publish joint commands
+        traj_msg = JointTrajectory()
+        traj_msg.header.stamp = self.get_clock().now().to_msg()
+        traj_msg.joint_names = list(joint_commands.keys())
+        point = JointTrajectoryPoint()
+        point.positions = list(joint_commands.values())
+        point.time_from_start.sec = 0
+        point.time_from_start.nanosec = 10000000  # 10ms
+        traj_msg.points = [point]
+        
+        self.trajectory_pub.publish(traj_msg)
+    
+    def trajectory_to_joints(self, trajectory):
+        """Convert CoM and foot trajectories to joint commands"""
+        # This would involve complex inverse kinematics and balance control
+        # For simplicity, returning placeholder values
+        return {
+            'left_hip_pitch': 0.0,
+            'right_hip_pitch': 0.0,
+            'left_knee_pitch': 0.0,
+            'right_knee_pitch': 0.0,
+            'left_ankle_pitch': 0.0,
+            'right_ankle_pitch': 0.0
+        }
+```
+
+## Grasping and Manipulation
+
+Humanoid hands require specialized control for dexterous manipulation:
+
+```python
+class GraspController:
+    def __init__(self):
+        self.finger_joints = {
+            'thumb': ['thumb_joint_0', 'thumb_joint_1', 'thumb_joint_2'],
+            'index': ['index_joint_0', 'index_joint_1', 'index_joint_2'],
+            'middle': ['middle_joint_0', 'middle_joint_1', 'middle_joint_2'],
+            'ring': ['ring_joint_0', 'ring_joint_1', 'ring_joint_2'],
+            'pinky': ['pinky_joint_0', 'pinky_joint_1', 'pinky_joint_2']
+        }
+    
+    def pre_grasp_pose(self, object_info):
+        """
+        Calculate pre-grasp pose for object
+        """
+        # Based on object size and shape, determine approach pose
+        grasp_type = self.classify_grasp_type(object_info)
+        
+        if grasp_type == 'cylindrical':
+            return self.cylindrical_pre_grasp(object_info)
+        elif grasp_type == 'spherical':
+            return self.spherical_pre_grasp(object_info)
+        elif grasp_type == 'prismatic':
+            return self.prismatic_pre_grasp(object_info)
+        else:
+            return self.default_pre_grasp(object_info)
+    
+    def cylindrical_pre_grasp(self, object_info):
+        """Pre-grasp for cylindrical objects"""
+        # Approach perpendicular to the cylinder axis
+        approach_dir = object_info['axis']  # Cylinder axis
+        grasp_points = self.calculate_cylindrical_grasp_points(object_info)
+        
+        return {
+            'grasp_points': grasp_points,
+            'approach_direction': approach_dir,
+            'finger_configuration': 'cylindrical_grasp'
+        }
+    
+    def calculate_cylindrical_grasp_points(self, object_info):
+        """Calculate optimal grasp points for cylindrical object"""
+        # Find points at optimal distance for grasp
+        radius = object_info['radius']
+        length = object_info['length']
+        center = object_info['center']
+        axis = object_info['axis']
+        
+        # Calculate grasp points at 120-degree intervals around cylinder
+        grasp_points = []
+        for i in range(3):
+            angle = 2 * np.pi * i / 3
+            offset = np.array([
+                radius * np.cos(angle),
+                radius * np.sin(angle),
+                0
+            ])
+            
+            # Transform to object frame
+            grasp_point = center + offset
+            grasp_points.append(grasp_point)
+        
+        return grasp_points
+    
+    def execute_grasp(self, grasp_pose, object_info):
+        """
+        Execute grasp based on calculated pose
+        """
+        # Move to pre-grasp position
+        self.move_to_pre_grasp(grasp_pose)
+        
+        # Close fingers with appropriate forces
+        self.close_fingers_with_force(object_info['weight'])
+        
+        # Verify grasp success
+        return self.verify_grasp_success()
+    
+    def move_to_pre_grasp(self, grasp_pose):
+        """Move hand to pre-grasp position"""
+        # Use inverse kinematics to move hand to grasp pose
+        # Implementation would involve calling IK solver
+        pass
+    
+    def close_fingers_with_force(self, object_weight):
+        """Close fingers with appropriate force based on object weight"""
+        # Calculate required forces based on object weight and friction
+        # and object properties
+        base_force = 5.0  # Base force in Newtons
+        weight_compensation = object_weight * 0.5  # Adjust as needed
+        
+        forces = {}
+        for finger, joints in self.finger_joints.items():
+            forces[finger] = base_force + weight_compensation
+        
+        # Apply forces to finger joints
+        self.apply_finger_forces(forces)
+    
+    def apply_finger_forces(self, forces):
+        """Apply calculated forces to finger joints"""
+        # Publish force/torque commands to finger joints
+        # This would involve sending commands to the robot's actuators
+        pass
+    
+    def verify_grasp_success(self):
+        """Verify that grasp was successful"""
+        # Check force sensors, tactile sensors, and visual feedback
+        # Return True if grasp is successful, False otherwise
+        return True  # Placeholder
+
+class ManipulationController:
+    def __init__(self):
+        self.grasp_controller = GraspController()
+        self.ik_solver = InverseKinematicsSolver([])  # Initialize with proper DH params
+    
+    def pick_and_place(self, object_pose, target_pose):
+        """
+        Execute pick and place operation
+        """
+        # 1. Move to position above object
+        approach_pose = self.calculate_approach_pose(object_pose)
+        self.move_to_pose(approach_pose)
+        
+        # 2. Lower to object
+        self.move_to_pose(object_pose)
+        
+        # 3. Execute grasp
+        grasp_success = self.grasp_controller.execute_grasp(
+            object_pose, 
+            {'weight': 1.0}  # Placeholder object info
+        )
+        
+        if not grasp_success:
+            self.get_logger().error("Grasp failed")
+            return False
+        
+        # 4. Lift object
+        self.move_to_pose(approach_pose)
+        
+        # 5. Move to target position
+        self.move_to_pose(target_pose)
+        
+        # 6. Place object
+        self.release_object()
+        
+        return True
+    
+    def calculate_approach_pose(self, object_pose):
+        """Calculate approach pose above object"""
+        approach = object_pose.copy()
+        approach[2] += 0.1  # 10cm above object
+        return approach
+    
+    def move_to_pose(self, target_pose):
+        """Move end-effector to target pose using IK"""
+        # Solve inverse kinematics
+        joint_angles = self.ik_solver.solve_ik(target_pose)
+        
+        if joint_angles is not None:
+            # Publish joint commands
+            self.publish_joint_commands(joint_angles)
+        else:
+            self.get_logger().error("IK solution not found")
+    
+    def publish_joint_commands(self, joint_angles):
+        """Publish joint angle commands to robot"""
+        # Implementation would publish to joint command topics
+        pass
+    
+    def release_object(self):
+        """Release grasped object"""
+        # Open fingers to release object
+        pass
+```
+
+## Key Challenges and Practical Insights
+
+Working with humanoid kinematics and dynamics presents several challenges:
+
+1. **Computational Complexity**: Solving IK for high-DOF systems is computationally intensive
+2. **Balance Control**: Maintaining stability while performing tasks requires sophisticated control
+3. **Real-time Performance**: Control algorithms must run in real-time for responsive behavior
+4. **Redundancy Resolution**: Multiple solutions to IK problems require criteria for selection
+5. **Safety**: Control systems must ensure safe operation to prevent falls or damage
+
+## Looking Ahead
+
+In Week 12, we'll explore conversational AI integration, learning how to combine natural language processing with humanoid robotics to create robots that can understand and respond to human commands through speech and text interfaces.

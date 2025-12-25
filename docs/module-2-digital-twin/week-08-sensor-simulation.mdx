@@ -1,0 +1,488 @@
+---
+id: week-08-physics-sensor-simulation
+title: Week 8 – Physics Simulation and Sensor Simulation in Gazebo
+---
+
+# Week 8: Physics Simulation and Sensor Simulation in Gazebo
+
+## Learning Objectives
+
+By the end of this week, students will be able to:
+- Configure physics properties for realistic humanoid robot simulation
+- Implement and simulate various sensor types in Gazebo
+- Understand the differences between ideal and realistic sensor models
+- Integrate simulated sensors with ROS 2 for perception pipelines
+- Evaluate the impact of simulation parameters on robot behavior
+
+## Physics Simulation Fundamentals
+
+Gazebo provides realistic physics simulation that is crucial for humanoid robots. The physics engine handles complex interactions between the robot and its environment, including gravity, collisions, friction, and dynamics.
+
+### Physics Engine Configuration
+
+Gazebo supports multiple physics engines, with Ignition Physics (formerly DART, ODE, and Bullet) providing different capabilities:
+
+```xml
+<!-- In world file -->
+<physics type="ignition-physics_1_0">
+  <max_step_size>0.001</max_step_size>
+  <real_time_factor>1.0</real_time_factor>
+  <real_time_update_rate>1000.0</real_time_update_rate>
+  <gravity>0 0 -9.8</gravity>
+</physics>
+```
+
+Key parameters:
+- **max_step_size**: Time step for physics updates (smaller = more accurate but slower)
+- **real_time_factor**: Simulation speed relative to real time (1.0 = real-time)
+- **real_time_update_rate**: Updates per second
+
+### Material Properties and Friction
+
+For humanoid robots walking on various surfaces, friction properties are critical:
+
+```xml
+<!-- In URDF/SDF -->
+<gazebo reference="left_foot">
+  <mu1>0.8</mu1>  <!-- Primary friction coefficient -->
+  <mu2>0.8</mu2>  <!-- Secondary friction coefficient -->
+  <kp>1000000.0</kp>  <!-- Contact stiffness -->
+  <kd>100.0</kd>      <!-- Contact damping -->
+</gazebo>
+```
+
+Different surfaces require different friction values:
+- Carpet: μ ≈ 0.6-0.8
+- Wood: μ ≈ 0.4-0.6
+- Tile: μ ≈ 0.2-0.4
+- Ice: μ ≈ 0.1
+
+## Sensor Simulation in Gazebo
+
+Gazebo provides plugins to simulate various sensors that humanoid robots use for perception and navigation.
+
+### Camera Simulation
+
+Camera sensors are essential for visual perception in humanoid robots:
+
+```xml
+<!-- In URDF with Gazebo plugin -->
+<gazebo reference="camera_link">
+  <sensor type="camera" name="camera_sensor">
+    <update_rate>30</update_rate>
+    <camera name="head_camera">
+      <horizontal_fov>1.047</horizontal_fov>  <!-- 60 degrees -->
+      <image>
+        <width>640</width>
+        <height>480</height>
+        <format>R8G8B8</format>
+      </image>
+      <clip>
+        <near>0.1</near>
+        <far>10.0</far>
+      </clip>
+    </camera>
+    <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+      <frame_name>camera_link</frame_name>
+      <topic_name>camera/image_raw</topic_name>
+      <hack_baseline>0.07</hack_baseline>
+    </plugin>
+  </sensor>
+</gazebo>
+```
+
+### Depth Camera Simulation
+
+Depth cameras provide both color and depth information:
+
+```xml
+<gazebo reference="depth_camera_link">
+  <sensor type="depth" name="depth_camera_sensor">
+    <update_rate>30</update_rate>
+    <camera name="depth_camera">
+      <horizontal_fov>1.047</horizontal_fov>
+      <image>
+        <width>640</width>
+        <height>480</height>
+      </image>
+      <clip>
+        <near>0.1</near>
+        <far>10.0</far>
+      </clip>
+    </camera>
+    <plugin name="depth_camera_controller" filename="libgazebo_ros_openni_kinect.so">
+      <baseline>0.2</baseline>
+      <always_on>true</always_on>
+      <update_rate>30</update_rate>
+      <camera_name>depth_camera</camera_name>
+      <image_topic_name>rgb/image_raw</image_topic_name>
+      <depth_image_topic_name>depth/image_raw</depth_image_topic_name>
+      <point_cloud_topic_name>depth/points</point_cloud_topic_name>
+      <camera_info_topic_name>rgb/camera_info</camera_info_topic_name>
+      <frame_name>depth_camera_link</frame_name>
+      <point_cloud_cutoff>0.1</point_cloud_cutoff>
+      <point_cloud_cutoff_max>3.0</point_cloud_cutoff_max>
+      <distortion_k1>0.0</distortion_k1>
+      <distortion_k2>0.0</distortion_k2>
+      <distortion_k3>0.0</distortion_k3>
+      <distortion_t1>0.0</distortion_t1>
+      <distortion_t2>0.0</distortion_t2>
+    </plugin>
+  </sensor>
+</gazebo>
+```
+
+### LiDAR Simulation
+
+LiDAR sensors are crucial for navigation and mapping:
+
+```xml
+<gazebo reference="lidar_link">
+  <sensor type="ray" name="lidar_sensor">
+    <update_rate>10</update_rate>
+    <ray>
+      <scan>
+        <horizontal>
+          <samples>720</samples>
+          <resolution>1</resolution>
+          <min_angle>-3.14159</min_angle>
+          <max_angle>3.14159</max_angle>
+        </horizontal>
+      </scan>
+      <range>
+        <min>0.1</min>
+        <max>30.0</max>
+        <resolution>0.01</resolution>
+      </range>
+    </ray>
+    <plugin name="lidar_controller" filename="libgazebo_ros_laser.so">
+      <topic_name>scan</topic_name>
+      <frame_name>lidar_link</frame_name>
+    </plugin>
+  </sensor>
+</gazebo>
+```
+
+### IMU Simulation
+
+IMUs are critical for balance and orientation in humanoid robots:
+
+```xml>
+<gazebo reference="imu_link">
+  <sensor name="imu_sensor" type="imu">
+    <always_on>true</always_on>
+    <update_rate>100</update_rate>
+    <visualize>true</visualize>
+    <topic>__default_topic__</topic>
+    <plugin filename="libgazebo_ros_imu.so" name="imu_plugin">
+      <topicName>imu/data</topicName>
+      <bodyName>imu_link</bodyName>
+      <updateRateHZ>100.0</updateRateHZ>
+      <gaussianNoise>0.01</gaussianNoise>
+      <xyzOffset>0 0 0</xyzOffset>
+      <rpyOffset>0 0 0</rpyOffset>
+      <frameName>imu_link</frameName>
+    </plugin>
+  </sensor>
+</gazebo>
+```
+
+### Force/Torque Sensor Simulation
+
+For manipulation tasks, force/torque sensors are essential:
+
+```xml>
+<gazebo reference="wrist_link">
+  <sensor type="force_torque" name="wrist_force_torque_sensor">
+    <always_on>true</always_on>
+    <update_rate>100</update_rate>
+    <force_torque>
+      <frame>child</frame>
+      <measure_direction>child_to_parent</measure_direction>
+    </force_torque>
+    <plugin name="ft_sensor_plugin" filename="libgazebo_ros_ft_sensor.so">
+      <update_rate>100</update_rate>
+      <topic_name>wrist/ft_sensor</topic_name>
+      <frame_name>wrist_link</frame_name>
+    </plugin>
+  </sensor>
+</gazebo>
+```
+
+## Realistic Sensor Models
+
+Real sensors have limitations and noise that should be simulated for realistic testing:
+
+### Camera Noise and Distortion
+
+```xml>
+<gazebo reference="camera_link">
+  <sensor type="camera" name="camera_sensor">
+    <!-- ... previous configuration ... -->
+    <camera name="head_camera">
+      <!-- ... previous camera config ... -->
+      <noise>
+        <type>gaussian</type>
+        <mean>0.0</mean>
+        <stddev>0.007</stddev>
+      </noise>
+    </camera>
+    <!-- ... plugin configuration ... -->
+  </sensor>
+</gazebo>
+```
+
+### LiDAR Noise and Range Limitations
+
+```xml>
+<gazebo reference="lidar_link">
+  <sensor type="ray" name="lidar_sensor">
+    <!-- ... previous configuration ... -->
+    <ray>
+      <!-- ... previous ray config ... -->
+      <noise>
+        <type>gaussian</type>
+        <mean>0.0</mean>
+        <stddev>0.01</stddev>
+      </noise>
+    </ray>
+    <!-- ... plugin configuration ... -->
+  </sensor>
+</gazebo>
+```
+
+## Physics Properties for Humanoid Robots
+
+### Inertial Properties
+
+Accurate inertial properties are crucial for realistic simulation:
+
+```xml
+<link name="thigh">
+  <inertial>
+    <mass value="2.5"/>
+    <!-- Computed from CAD model -->
+    <inertia ixx="0.02" ixy="0.0" ixz="0.001" 
+             iyy="0.02" iyz="0.0" izz="0.008"/>
+  </inertial>
+</link>
+
+<gazebo reference="thigh">
+  <!-- Additional Gazebo-specific properties -->
+  <material>Gazebo/Blue</material>
+  <mu1>0.2</mu1>
+  <mu2>0.2</mu2>
+  <kp>1000000.0</kp>
+  <kd>100.0</kd>
+</gazebo>
+```
+
+### Joint Dynamics
+
+For realistic humanoid movement, joint dynamics must be properly configured:
+
+```xml
+<joint name="knee_joint" type="revolute">
+  <parent link="thigh"/>
+  <child link="shin"/>
+  <origin xyz="0 0 -0.4" rpy="0 0 0"/>
+  <axis xyz="0 1 0"/>
+  <limit lower="0" upper="2.0" effort="100" velocity="5.0"/>
+  <dynamics damping="1.0" friction="0.5"/>
+</joint>
+
+<gazebo reference="knee_joint">
+  <provideFeedback>true</provideFeedback>
+  <implicitSpringDamper>1</implicitSpringDamper>
+</gazebo>
+```
+
+## Integration with ROS 2
+
+### Sensor Message Types
+
+Simulated sensors publish standard ROS 2 message types:
+
+```python
+# Example of processing simulated sensor data
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Image, LaserScan, Imu
+from cv_bridge import CvBridge
+
+class SensorProcessor(Node):
+    def __init__(self):
+        super().__init__('sensor_processor')
+        self.bridge = CvBridge()
+        
+        # Subscribe to simulated sensors
+        self.camera_sub = self.create_subscription(
+            Image,
+            'camera/image_raw',
+            self.camera_callback,
+            10
+        )
+        
+        self.scan_sub = self.create_subscription(
+            LaserScan,
+            'scan',
+            self.scan_callback,
+            10
+        )
+        
+        self.imu_sub = self.create_subscription(
+            Imu,
+            'imu/data',
+            self.imu_callback,
+            10
+        )
+    
+    def camera_callback(self, msg):
+        # Process camera data from simulation
+        cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+        # Apply computer vision algorithms
+        self.process_vision(cv_image)
+    
+    def scan_callback(self, msg):
+        # Process LiDAR data from simulation
+        ranges = msg.ranges
+        # Apply navigation algorithms
+        self.process_lidar(ranges)
+    
+    def imu_callback(self, msg):
+        # Process IMU data for balance control
+        orientation = msg.orientation
+        angular_velocity = msg.angular_velocity
+        linear_acceleration = msg.linear_acceleration
+        # Apply balance control algorithms
+        self.process_imu(orientation, angular_velocity, linear_acceleration)
+```
+
+### Simulation-Specific Considerations
+
+When working with simulated sensors, consider:
+
+1. **Timing Differences**: Simulated sensors may have different timing characteristics than real sensors
+2. **Noise Models**: Realistic noise should be added to simulated data
+3. **Latency**: Consider adding realistic communication delays
+4. **Synchronization**: Coordinate data from multiple sensors appropriately
+
+## Creating Custom Worlds
+
+For humanoid robot testing, custom environments can be created:
+
+```xml
+<!-- my_humanoid_world.sdf -->
+<sdf version="1.7">
+  <world name="humanoid_test_world">
+    <physics type="ignition-physics_1_0">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000.0</real_time_update_rate>
+    </physics>
+    
+    <!-- Lighting -->
+    <light name="sun" type="directional">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.3 0.3 -1</direction>
+    </light>
+    
+    <!-- Ground plane -->
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+    
+    <!-- Models for testing -->
+    <include>
+      <uri>model://table</uri>
+      <pose>2 0 0.5 0 0 0</pose>
+    </include>
+    
+    <include>
+      <uri>model://person_standing</uri>
+      <pose>-1 1 0 0 0 0</pose>
+    </include>
+    
+    <!-- Your humanoid robot -->
+    <include>
+      <uri>model://my_humanoid</uri>
+      <pose>0 0 1.0 0 0 0</pose>
+    </include>
+  </world>
+</sdf>
+```
+
+## Performance Optimization
+
+### Reducing Computational Load
+
+For complex humanoid robots, performance optimization is important:
+
+1. **Simplify Collision Geometries**: Use simple shapes for collision detection
+2. **Adjust Update Rates**: Match sensor update rates to actual requirements
+3. **Limit Physics Accuracy**: Adjust physics parameters based on needs
+4. **Use Level of Detail**: Implement LOD for complex models
+
+### Multi-Body Dynamics
+
+For humanoid robots with many degrees of freedom:
+
+```xml
+<!-- In world file -->
+<physics type="ignition-physics_1_0">
+  <!-- For humanoid robots with many joints -->
+  <max_step_size>0.001</max_step_size>  <!-- Smaller steps for stability -->
+  <real_time_update_rate>1000.0</real_time_update_rate>
+  <!-- Adjust solver iterations for complex systems -->
+  <solver>
+    <type>quick</type>
+    <iters>1000</iters>
+    <sor>1.3</sor>
+  </solver>
+  <!-- ERP and CFM for joint constraints -->
+  <constraints>
+    <contact_surface_layer>0.001</contact_surface_layer>
+    <contact_max_correcting_vel>100.0</contact_max_correcting_vel>
+  </constraints>
+</physics>
+```
+
+## Troubleshooting Common Issues
+
+### Instability in Simulation
+
+Common causes of instability in humanoid simulation:
+- Mass/inertia values too low or unrealistic
+- Joint limits too restrictive or permissive
+- Physics time step too large
+- Insufficient solver iterations
+
+### Sensor Data Quality
+
+To improve sensor data quality:
+- Verify sensor placement in URDF
+- Check for proper coordinate frame transformations
+- Ensure adequate lighting in simulation environment
+- Validate sensor noise parameters
+
+## Key Challenges and Practical Insights
+
+Simulating humanoid robots presents unique challenges:
+
+1. **Balance and Stability**: Humanoid robots are inherently unstable; simulation must accurately reflect this
+2. **Complex Kinematics**: Many degrees of freedom require careful modeling
+3. **Real-time Performance**: Complex robots may require significant computational resources
+4. **Sensor Fusion**: Multiple sensors must be properly synchronized and calibrated
+
+## Looking Ahead
+
+In Week 9, we'll explore the NVIDIA Isaac platform, learning how to leverage Isaac Sim for photorealistic simulation and synthetic data generation, as well as Isaac ROS for hardware-accelerated perception and navigation.

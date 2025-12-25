@@ -1,8 +1,8 @@
 <!-- SYNC IMPACT REPORT:
-Version Change: 1.0.0 -> 1.1.0
-Modified Principles: Previous principles replaced with new RAG chatbot principles
-Added Sections: New project specifics for RAG chatbot
-Removed Sections: Previous Physical AI & Humanoid Robotics content
+Version Change: 1.0.0 -> 1.2.0
+Modified Principles: Changed from RAG chatbot to Physical AI & Humanoid Robotics textbook
+Added Sections: New project specifics for Physical AI & Humanoid Robotics
+Removed Sections: Previous RAG chatbot content
 Templates Requiring Updates:
   - .specify/templates/plan-template.md: ⚠ pending review
   - .specify/templates/spec-template.md: ⚠ pending review
@@ -12,128 +12,125 @@ Templates Requiring Updates:
 Follow-up TODOs: Update dependent artifacts to align with new principles
 -->
 
-# Project Constitution: Integrated RAG Chatbot for AI Textbook Website
+# Project Constitution: Physical AI & Humanoid Robotics Textbook
 
 ## Overview
 
-This constitution governs the development of an integrated retrieval-augmented generation (RAG) chatbot embedded in a published technical book that answers user questions strictly using the book's content.
+This constitution governs the development of a comprehensive educational textbook on Physical AI & Humanoid Robotics. The book consists of interconnected modules that build upon each other to provide a comprehensive understanding of physical AI systems with a focus on humanoid robotics.
 
-The chatbot will be built using Spec-Kit Plus methodology and deployed as part of a static documentation website using Docusaurus and GitHub Pages.
+The textbook is built using Spec-Kit Plus methodology and deployed as a static documentation website using Docusaurus and GitHub Pages.
 
 ## Primary Objectives
 
-1. Build a retrieval-augmented chatbot that answers user questions using only book content
-2. Ensure 100% source-grounded accuracy with zero hallucination tolerance
-3. Provide educational clarity for AI, robotics, and software engineering readers
-4. Maintain deterministic, reproducible answers from the book's content
-5. Deploy a production-ready system for academic and public use
+1. Create a comprehensive educational resource on Physical AI & Humanoid Robotics
+2. Provide in-depth coverage of robotics platforms, simulation, perception, and navigation systems
+3. Enable students to design and understand AI "brains" for physical robots, especially humanoid robots
+4. Bridge the gap between simulation and real-world deployment
+5. Deliver educational content with technical depth appropriate for undergraduate and graduate students
 
 ## Target Audience
 
-- Students learning AI, robotics, and software engineering
-- Researchers seeking specific information from the textbook
-- Technical professionals using the book as reference material
-- Anyone interested in accurate, book-grounded responses to their questions
+- Undergraduate and graduate students in Robotics, AI, and Physical AI programs
+- Researchers working in humanoid robotics
+- Engineers developing embodied AI systems
+- Anyone interested in understanding the intersection of AI and physical systems
 
 ## Core Principles
 
-### I. Source-grounded Accuracy (No External Knowledge)
-All chatbot responses must be derived exclusively from the book's content. Responses must never incorporate external knowledge or general pre-trained model capabilities that weren't learned from the book itself.
+### I. Technical Accuracy and Educational Clarity
+All content must be technically accurate and presented in a way that is clear, educational, and appropriate for the target audience. Content should use simple technical language that balances precision with understanding.
 
-### II. Zero Hallucination Tolerance
-The chatbot must never fabricate, imagine, or extrapolate information beyond what is explicitly contained in the book content. If the answer is not present in the book, the system must state this clearly rather than providing potentially inaccurate information.
+### II. Modularity and Progressive Learning
+Modules should be designed to build upon each other, allowing readers to progressively develop their understanding of complex Physical AI concepts. Each module should be self-contained while contributing to the overall learning objectives.
 
-### III. Educational Clarity for Target Audience
-All responses must be clear, educational, and appropriate for AI, robotics, and software engineering readers. Responses should use simple technical language that balances precision with understanding.
+### III. Technology-Integrated Learning
+Educational content must integrate the use of specific technology platforms relevant to the field, including ROS2, NVIDIA Isaac, simulation environments, and related tools.
 
-### IV. Deterministic and Reproducible Answers
-Chatbot responses must be consistent for identical queries and retrievals. The system should provide reproducible results that can be traced back to specific book sections.
+### IV. Simulation-to-Reality Focus
+Content must emphasize the connection between simulated environments and real-world deployment, including the challenges and techniques involved in Sim-to-Real transfer.
 
-### V. Model-agnostic, API-independent Design
-The system architecture should be designed to support alternative models and APIs if needed, though the implementation must follow the specified model policy for the current iteration.
+### V. Application-Oriented Learning
+Focus on practical applications and use-cases, particularly as they relate to humanoid robots and their unique challenges in perception, navigation, and control.
 
 ## Key Standards
 
-### Model Policy:
-- Generation: Cohere LLMs only
-- Embeddings: Cohere embeddings only
-- Reasoning validation: Qwen CLI
-- OpenAI APIs are strictly prohibited
+### Content Structure:
+- Modules: Self-contained units of 1,500-2,500 words
+- Sections: Logical breakdown of concepts with learning outcomes
+- Citations: APA style referencing official documentation and peer-reviewed research
 
-### Data Management:
-- Primary data source: Vectorized book content stored in Qdrant Cloud
-- Metadata-backed chunks with chapter, section, page, and URL information
-- All retrievals must reference proper book sections
+### Technology Focus:
+- Primary: NVIDIA Isaac ecosystem (Isaac Sim, Isaac ROS)
+- Secondary: ROS2, Nav2 navigation stack, VSLAM
+- Platforms: Jetson-based deployment
+- Simulation: Photorealistic environments for synthetic data generation
 
-### Answer Structure:
-- Direct answer first
-- Explanation in simple technical language
-- Bullet points where helpful
-- Citations of section/chapter names when applicable
-- Format: (Chapter X – Section Y)
+### Educational Approach:
+- Technical but instructional level
+- Conceptual understanding with practical applications
+- Clear separation between simulation and real-world execution
+- Diagrams and conceptual models to enhance understanding
 
 ## Content Constraints
 
-### Retrieval Rules:
-- All answers MUST be derived from retrieved book chunks
-- If no relevant chunks are retrieved, respond with: "This information is not available in the book."
-- Never infer, assume, or extrapolate beyond provided content
+### Technology Scope:
+- Focus on NVIDIA Isaac ecosystem without vendor comparisons
+- Include ROS2, but with Isaac-specific integrations
+- Cover Nav2 with humanoid/bipedal robot adaptations
+- Emphasize hardware-accelerated perception and VSLAM
 
-### Selected Text Constraint:
-- If user provides selected text:
-  - Retrieval scope is LIMITED to the selected text only
-  - Ignore all other book content
-  - Answer must reference only that text
-  - If answer is not present, explicitly state it
+### Content Boundaries:
+- No detailed reinforcement learning theory
+- No low-level CUDA or kernel programming
+- No code-heavy implementation tutorials
+- No ethics or safety analysis (covered elsewhere)
 
-### Prohibited Behaviors:
-- Using pretrained general knowledge
-- Guessing missing information
-- Answering outside book scope
-- Fabricating citations or explanations
-- Using OpenAI APIs or any other unauthorized services
+### Quality Standards:
+- All technical claims must be supported by official documentation or academic sources
+- Content must be accessible to students with basic ROS2 and SLAM knowledge
+- Diagrams should conceptually illustrate architecture and data flow
 
 ## Tooling & Workflow Governance
 
-### Qwen CLI:
-- Used for quality checks and validation
-- Validates answer against retrieved context
-- Rejects responses with unsupported claims
-- Enforces concise, non-redundant output
+### Docusaurus:
+- Used for static site generation
+- Enables modular content organization
+- Supports educational documentation features
 
 ### Spec-Kit Plus:
 - Governs specification-driven development
-- Ensures consistency across components
+- Ensures consistency across modules
 - Enforces compliance with this constitution
 
 ### Development Workflow:
-- Follow TDD principles where applicable
-- Ensure all changes are tested against quality criteria
-- Maintain traceability from requirements to implementation
+- Follow specification-driven approach with clear requirements
+- Ensure all content meets defined success criteria
+- Maintain traceability from learning objectives to implementation
 
-All specifications, plans, tasks, and generated code must conform to this
+All specifications, plans, tasks, and generated content must conform to this
 constitution. Any violation must be corrected before continuing development.
 
 ## Success Criteria
 
-- 100% answers traceable to book content
-- Zero hallucinations in evaluation
-- User-selected text queries handled correctly
-- Production-ready for academic and public deployment
-- Response latency optimized for free-tier infrastructure
-- Stateless generation with session tracking via database only
+- Students can understand and explain the full perception-to-navigation pipeline
+- Content addresses the role of NVIDIA Isaac in Physical AI systems
+- Demonstrates how photorealistic simulation enables synthetic data generation
+- Covers Isaac ROS for hardware-accelerated perception and VSLAM
+- Explains Nav2 path planning for humanoid and bipedal robots
+- Students can clearly describe complete AI robot brain systems
+- All technical claims supported by official documentation or academic sources
 
 ## Governance
 
 This constitution is the authoritative, non-negotiable standard governing the
-entire RAG chatbot project. Any amendments must be explicitly documented and approved
+entire Physical AI & Humanoid Robotics textbook project. Any amendments must be explicitly documented and approved
 before use. All AI agents must reference this constitution during every phase
 of specification, planning, implementation, and review.
 
 ### Versioning
-- Version: 1.1.0
-- Ratification Date: 2025-12-15
-- Last Amended Date: 2025-12-17
+- Version: 1.2.0
+- Ratification Date: 2025-12-19
+- Last Amended Date: 2025-12-19
 - Status: Active
 - Amendment Procedure: Changes require explicit documentation and approval before implementation
 - Versioning Policy: Follow semantic versioning for all constitution updates

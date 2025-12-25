@@ -1,0 +1,211 @@
+---
+id: week-03-ros2-fundamentals
+title: Week 3 – ROS 2 Architecture and Core Concepts
+---
+
+# Week 3: ROS 2 Architecture and Core Concepts
+
+## Learning Objectives
+
+By the end of this week, students will be able to:
+- Understand the architecture and core concepts of ROS 2
+- Explain the differences between ROS 1 and ROS 2
+- Identify and describe ROS 2 nodes, topics, services, and actions
+- Set up a basic ROS 2 development environment
+- Create simple ROS 2 nodes for robot communication
+
+## Introduction to ROS 2
+
+ROS 2 (Robot Operating System 2) is the next-generation middleware framework for developing robot applications. Unlike traditional operating systems, ROS 2 provides a collection of tools, libraries, and conventions that facilitate the creation of complex robotic systems. It serves as the "nervous system" of a robot, enabling different components to communicate and coordinate effectively.
+
+ROS 2 addresses several limitations of its predecessor, including improved security, real-time capabilities, and support for commercial deployment. It's designed to work across different platforms and operating systems, making it suitable for a wide range of robotic applications from research prototypes to industrial systems.
+
+### Why ROS 2 for Humanoid Robotics?
+
+Humanoid robots are complex systems requiring coordination between many components:
+- Motor controllers for limb movement
+- Sensor processing units for vision, touch, and proprioception
+- AI modules for perception and decision-making
+- Planning algorithms for motion and task execution
+
+ROS 2 provides the infrastructure to connect these components seamlessly, enabling them to work together as a unified system.
+
+## ROS 2 Architecture
+
+### Client Library Implementations
+
+ROS 2 supports multiple client libraries that allow nodes to be written in different programming languages:
+- **rclcpp**: C++ client library
+- **rclpy**: Python client library (particularly important for AI integration)
+- **rclrs**: Rust client library
+- Others for Java, C#, and other languages
+
+### DDS (Data Distribution Service)
+
+ROS 2 uses DDS as its underlying communication middleware. DDS provides:
+- Reliable message delivery
+- Quality of Service (QoS) policies
+- Real-time communication capabilities
+- Language and platform independence
+
+## Core ROS 2 Concepts
+
+### Nodes
+
+A node is a process that performs computation. In a humanoid robot, you might have nodes for:
+- Motor control
+- Sensor processing
+- Path planning
+- Computer vision
+- AI decision-making
+
+Nodes are organized in a distributed system where each node can run on different machines or processes.
+
+### Topics and Publishers/Subscribers
+
+Topics enable asynchronous communication between nodes using a publish/subscribe pattern:
+- Publishers send messages to topics
+- Subscribers receive messages from topics
+- Multiple publishers and subscribers can use the same topic
+- Communication is decoupled in time and space
+
+```python
+# Example publisher in Python
+import rclpy
+from std_msgs.msg import String
+
+def main():
+    rclpy.init()
+    node = rclpy.create_node('talker')
+    publisher = node.create_publisher(String, 'chatter', 10)
+    
+    def timer_callback():
+        msg = String()
+        msg.data = 'Hello World'
+        publisher.publish(msg)
+    
+    timer = node.create_timer(0.5, timer_callback)
+    rclpy.spin(node)
+```
+
+### Services
+
+Services enable synchronous request/response communication:
+- A client sends a request to a server
+- The server processes the request and sends back a response
+- Useful for operations that require a specific result
+
+### Actions
+
+Actions are for long-running tasks with feedback:
+- Goal: Request to perform a task
+- Feedback: Updates during task execution
+- Result: Final outcome of the task
+- Cancellation: Ability to stop the task
+
+## Setting Up ROS 2 Environment
+
+### Installation
+
+ROS 2 supports multiple distributions, with the latest being Rolling Ridley. For humanoid robotics, we recommend using a stable distribution like Humble Hawksbill (Ubuntu 22.04) or Iron Irwini (Ubuntu 22.04).
+
+### Workspace Creation
+
+ROS 2 uses colcon for building packages:
+
+```bash
+mkdir -p ~/ros2_ws/src
+cd ~/ros2_ws
+colcon build
+source install/setup.bash
+```
+
+## Quality of Service (QoS) Settings
+
+QoS settings allow fine-tuning communication behavior:
+- Reliability: Best effort vs. reliable delivery
+- Durability: Volatile vs. transient local
+- History: Keep last N messages vs. keep all messages
+- Deadline: Maximum time between consecutive messages
+
+These settings are crucial for humanoid robots where some data (like safety information) requires reliable delivery while other data (like camera feeds) can tolerate some loss for real-time performance.
+
+## ROS 2 Packages and Structure
+
+A ROS 2 package typically contains:
+- Source code (C++/Python)
+- Launch files for starting multiple nodes
+- Configuration files
+- Message/service/action definitions
+- Documentation
+
+The package structure follows conventions that make it easy to share and reuse code.
+
+## Practical Implementation for Humanoid Robots
+
+### Communication Patterns
+
+In humanoid robots, common communication patterns include:
+- Sensor data streaming (camera feeds, IMU data) via topics
+- Motor command sending via services or actions
+- Behavior coordination via parameter servers
+- State information sharing via topics
+
+### Example: Joint Control
+
+A humanoid robot's joint control system might use:
+- Topics to send joint position commands
+- Services to request specific poses
+- Actions for complex movement sequences with feedback
+
+```python
+# Example of a simple joint controller node
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Float64MultiArray
+from sensor_msgs.msg import JointState
+
+class JointController(Node):
+    def __init__(self):
+        super().__init__('joint_controller')
+        self.subscription = self.create_subscription(
+            JointState,
+            'joint_states',
+            self.listener_callback,
+            10)
+        self.publisher = self.create_publisher(
+            Float64MultiArray,
+            'joint_commands',
+            10)
+    
+    def listener_callback(self, msg):
+        # Process joint states and generate commands
+        commands = Float64MultiArray()
+        # ... logic to determine commands
+        self.publisher.publish(commands)
+```
+
+## Security Considerations
+
+ROS 2 includes security features important for humanoid robots:
+- Authentication: Verifying node identity
+- Encryption: Protecting message content
+- Authorization: Controlling access to topics/services
+
+These features are essential as humanoid robots become more integrated into human environments.
+
+## Key Challenges and Practical Insights
+
+Implementing ROS 2 in humanoid robotics presents unique challenges:
+
+1. **Real-time Requirements**: Humanoid robots often need deterministic response times, which requires careful QoS configuration and potentially real-time operating system support.
+
+2. **Network Communication**: When robot components are distributed across multiple computers, network latency and reliability become critical factors.
+
+3. **Message Rates**: High-frequency sensor data (like IMU readings at 1000Hz) requires efficient message handling to avoid system bottlenecks.
+
+4. **System Monitoring**: Complex humanoid systems require robust monitoring and debugging capabilities.
+
+## Looking Ahead
+
+In Week 4, we'll dive deeper into ROS 2 by exploring how to build ROS 2 packages with Python, creating launch files for system orchestration, and managing parameters for robot configuration. We'll also examine how AI agents can interface with ROS 2 controllers using rclpy.

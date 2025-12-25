@@ -1,0 +1,44 @@
+---
+sidebar_position: 1
+---
+
+# ROS 2 Packages and Launch Systems
+
+## Package Structure
+
+### ROS 2 Package Organization
+A ROS 2 package contains the source code, configuration files, and dependencies needed for a specific functionality. The standard structure includes:
+- `CMakeLists.txt` or `setup.py` for build configuration
+- `package.xml` for metadata and dependencies
+- Source code in appropriate language-specific directories
+- Configuration and launch files
+
+### Creating Packages
+Using `ros2 pkg create` to initialize new packages with proper structure and build system configuration.
+
+## Launch Systems
+
+### Launch Files
+Launch files in ROS 2 are written in Python and provide a powerful way to start multiple nodes with specific configurations.
+
+### Launch Arguments
+Parameterizing launch files to make them more flexible and reusable across different environments and configurations.
+
+### Composable Nodes
+Running multiple nodes within a single process to reduce overhead and improve performance.
+
+## Testing and Quality Assurance
+
+### ROS 2 Testing Framework
+Tools and practices for testing ROS 2 packages, including unit tests, integration tests, and system tests.
+
+### Code Quality Standards
+ROS 2 follows specific coding standards and practices to ensure maintainability and interoperability.
+
+## Learning Objectives
+
+By the end of this week, students should be able to:
+1. Create and structure ROS 2 packages properly
+2. Write launch files for complex multi-node systems
+3. Use launch arguments for flexible system configuration
+4. Implement testing strategies for ROS 2 packages

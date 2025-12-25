@@ -1,0 +1,40 @@
+---
+sidebar_position: 1
+---
+
+# ROS 2 Core Concepts
+
+## Nodes and Communication
+
+### ROS 2 Nodes
+In ROS 2, a node is a process that performs computation. Nodes are the fundamental building blocks of ROS 2 applications and are designed to be modular and reusable.
+
+### Communication Patterns
+ROS 2 supports several communication patterns:
+- **Topics**: Publish/subscribe communication for streaming data
+- **Services**: Request/response communication for synchronous operations
+- **Actions**: Goal/cancel/result communication for long-running tasks
+
+## Parameters and Configuration
+
+### Parameter Management
+ROS 2 provides a robust system for managing parameters that can be set at runtime, allowing for flexible configuration of robot systems without recompilation.
+
+### Launch Files
+Launch files allow you to start multiple nodes with a single command, along with their configurations, parameters, and remappings.
+
+## Quality of Service (QoS)
+
+### QoS Policies
+ROS 2 introduces Quality of Service policies that allow fine-tuning of communication behavior:
+- Reliability (reliable vs. best effort)
+- Durability (transient local vs. volatile)
+- History (keep last vs. keep all)
+
+## Learning Objectives
+
+By the end of this week, students should be able to:
+1. Create and implement ROS 2 nodes
+2. Understand and use different communication patterns
+3. Configure nodes using parameters
+4. Apply appropriate QoS policies for different use cases

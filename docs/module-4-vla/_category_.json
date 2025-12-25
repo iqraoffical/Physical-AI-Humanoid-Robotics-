@@ -1,0 +1,10 @@
+{
+  "label": "Module 4: Vision-Language-Action Systems",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "title": "Vision-Language-Action Systems",
+    "description": "Integrating vision, language, and action for conversational robotics",
+    "slug": "/docs/module-4-vla"
+  }
+}
