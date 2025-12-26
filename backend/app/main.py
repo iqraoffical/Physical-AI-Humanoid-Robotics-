@@ -22,7 +22,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            "*",
+            
             "http://localhost:3000",
             "https://physical-ai-humanoid-robotics-anui.vercel.app",
         ],
