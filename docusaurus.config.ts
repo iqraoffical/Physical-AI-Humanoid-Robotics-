@@ -15,7 +15,7 @@ const config: Config = {
   },
 
   // Set the production url of your site here
-  url: 'https://physical-ai-humanoid-robotics-r8ka.vercel.app', // Your actual Vercel URL
+  url: 'https://physical-ai-humanoid-robotics-anui.vercel.app', // Your actual Vercel URL
   // Set the /<baseUrl>/ pathname under which your site is served
   // For Vercel deployment, use just '/'
   baseUrl: '/',
@@ -113,11 +113,11 @@ const config: Config = {
             },
             {
               label: 'Module 1: ROS 2 Nervous System',
-              to: '/docs/book/module-1-ros2/nervous-system',
+              to: '/docs/module-1-ros2/week-03-ros2-introduction/nervous-system',
             },
             {
               label: 'Module 2: Digital Twin',
-              to: '/docs/book/module-2-digital-twin/digital-twin',
+              to: '/docs/module-2-digital-twin/week-06-gazebo-setup/digital-twin',
             },
           ],
         },
