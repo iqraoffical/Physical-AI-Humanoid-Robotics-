@@ -23,7 +23,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=[
             
-            " http://127.0.0.1:8000",
+            "http://localhost:3000",
             "https://physical-ai-humanoid-robotics-anui.vercel.app",
         ],
         allow_credentials=True,

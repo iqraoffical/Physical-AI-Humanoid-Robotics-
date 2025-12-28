@@ -64,7 +64,7 @@ const RagChatbotPanel = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      const response = await fetch('https://iqra-physical-robotics-rag-deploy.hf.space/api/v1/query)', {
+      const response = await fetch('https://iqra-physical-robotics-rag-deploy.hf.space/api/v1/query',{
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,0 +1,11 @@
+This is a sample textbook content for testing the document ingestion functionality.
+
+The RAG (Retrieval-Augmented Generation) system is designed to answer questions based on the content of textbooks and other educational materials. This system combines the power of large language models with the precision of information retrieval.
+
+In this sample content, we'll include some information about how RAG systems work:
+
+1. The system ingests documents and converts them into a format that can be searched efficiently.
+2. When a user asks a question, the system retrieves relevant information from the documents.
+3. The retrieved information is then used to generate a response that is grounded in the source material.
+
+This process ensures that the answers provided by the system are accurate and based on the actual content of the textbooks.
