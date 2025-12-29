@@ -110,7 +110,9 @@ def ingest_documents(
             chunk_overlap=chunk_overlap
         )
 
-        logger.info(f"Index created with {len(index.ref_doc_info)} documents")
+        # Note: ref_doc_info is not supported by all vector store integrations
+        # For Qdrant, we can't access ref_doc_info, so we'll just log success
+        logger.info("Index created successfully")
 
     except Exception as e:
         logger.error(f"Error during document ingestion: {str(e)}")
@@ -142,16 +144,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Check if required environment variables are set
-    required_vars = [
-        "COHERE_API_KEY",
-        "QDRANT_URL",
-        "QDRANT_API_KEY"
-    ]
-
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
-    if missing_vars:
-        logger.error(f"Missing required environment variables: {missing_vars}")
+    # Check if required environment variables are set via settings
+    # This will trigger validation and load from .env file
+    try:
+        _ = settings.COHERE_API_KEY
+        _ = settings.QDRANT_URL
+        _ = settings.QDRANT_API_KEY
+    except Exception as e:
+        logger.error(f"Missing required environment variables: {str(e)}")
         exit(1)
 
     logger.info("Starting document ingestion process...")

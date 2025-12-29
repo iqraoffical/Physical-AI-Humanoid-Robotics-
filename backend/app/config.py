@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     # Neon Postgres Configuration
     NEON_DATABASE_URL: str
 
+    # OpenAI Configuration
+    OPENAI_API_KEY: Optional[str] = None
+
     # Application Configuration
     APP_ENV: str = "development"
     LOG_LEVEL: str = "info"
