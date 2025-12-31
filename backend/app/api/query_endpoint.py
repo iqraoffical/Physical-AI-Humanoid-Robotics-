@@ -59,11 +59,25 @@ async def query_endpoint(
             threshold=0.5
         )
 
-        # Generate response
+        # Extract user ID from the request if available (for personalization)
+        user_software_background = None
+        user_hardware_background = None
+
+        # If user_id is provided, fetch their background information
+        if user_query.user_id:
+            from app.models.user import User
+            user = db.query(User).filter(User.id == user_query.user_id).first()
+            if user:
+                user_software_background = user.software_background
+                user_hardware_background = user.hardware_background
+
+        # Generate response with personalization
         result = generation_service.generate_response(
             query=user_query.query,
             context_chunks=context_chunks,
-            include_citations=user_query.include_citations
+            include_citations=user_query.include_citations,
+            user_software_background=user_software_background,
+            user_hardware_background=user_hardware_background
         )
 
         # Add query-response to session history
